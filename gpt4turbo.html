@@ -11,6 +11,7 @@
       integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
       crossorigin="anonymous"
       referrerpolicy="no-referrer" />
+    <link rel="icon" href="model/image.png" />
     <title>Yacht Dice!</title>
   </head>
 
@@ -107,6 +108,71 @@
       white-space: nowrap;
     }
 
+    .score-stamp{
+      animation: score-stamp 2s ease-in-out;
+      transform-origin: center;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    @keyframes score-stamp {
+      0%{
+        transform: scale(5);
+        opacity: 0;
+      }
+      8%{
+        transform: scale(0.95);
+        opacity: 1;
+      }
+      10% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes bonus {
+      /* 0% {
+        transform: scale(5);
+        opacity: 0;
+      }
+      6%{
+        transform: scale(5);
+        opacity: 1;
+      }
+      24%{
+        transform: scale(5);
+        opacity: 0.2;
+      }
+      42%{
+        transform: scale(5);
+        opacity: 1;
+      }
+      60%{
+        transform: scale(5);
+        opacity: 0.2;
+      }
+      80%{
+        transform: scale(5);
+        opacity: 1;
+      }
+      88%{
+        transform: scale(0.95);
+      }
+      90% {
+        transform: scale(1);
+      } */
+      0%{
+        transform: scale(5);
+        opacity: 0;
+      }
+      8%{
+        transform: scale(0.95);
+        opacity: 1;
+      }
+      10% {
+        transform: scale(1);
+      }
+    }
+
     @keyframes stamp {
       0% {
         transform: translateX(-50%) scale(12);
@@ -171,6 +237,8 @@
     .bonus-row .bonus {
       font-size: 22px;
       padding: 0px 5px;
+      white-space: nowrap;
+      overflow: hidden;
       color: rgba(255, 255, 255, 0.822);
     }
 
@@ -185,6 +253,7 @@
       overflow-y: auto;
       height: calc(100vh - 150px);
       margin-top: 8px;
+      overflow-x: hidden;
     }
 
     .score::-webkit-scrollbar {
@@ -217,7 +286,8 @@
       cursor: pointer;
       color: rgb(130, 130, 130);
       background-color: rgba(255, 205, 80, 0.346);
-      font-size: 20px;
+      font-size: 22px;
+      font-weight: 600;
     }
 
     .selectable:hover {
@@ -231,8 +301,9 @@
     }
 
     .user-score {
-      font-size: 20px;
+      font-size: 22px;
       padding: 0 5px;
+      font-weight: 900;
     }
 
     .total-row {
@@ -281,7 +352,7 @@
     .user {
       position: absolute;
       height: 100vh;
-      min-width: 260px;
+      min-width: 280px;
       width: 20vw;
       background-color: rgba(255, 255, 255, 0.555);
       backdrop-filter: blur(4px);
@@ -316,5 +387,3 @@
     }
   </style>
 </html>
-
-

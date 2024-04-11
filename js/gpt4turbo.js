@@ -1,9 +1,10 @@
-import * as THREE from "../node_modules/three/build/three.module.js";
-import { RoundedBoxGeometry } from "../node_modules/three/build/RoundedBoxGeometry.js";
+import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.163.0/three.module.js";
 import * as BufferGeometryUtils from "https://cdn.skypack.dev/three@0.133.1/examples/jsm/utils/BufferGeometryUtils.js";
 
 //게임 설정 변경
-const DebugMode = true;
+
+//디버그모드
+const DebugMode = false;
 
 //플레이어 이름
 const player1name = "Player 1";
@@ -14,6 +15,9 @@ const DiceMass = 500;
 const Dice2Dice = [0, 0.3];
 const Dice2Floor = [0.2, 0.3];
 const Dice2Wall = [0.1, 0.5];
+//벽 재질(matalness, roughness)
+const CarpetTexture = [0.1, 0.5];
+const WallTexture = [0.7, 0.3];
 //주사위 정지 후 정렬까지 걸리는 시간(ms)
 const DiceStopDelay = 330;
 //주사위 던지는 위치
@@ -66,26 +70,28 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 let world = new CANNON.World();
 world.gravity.set(0, 0, -9.82); // 중력 설정
 
-// const Light = new THREE.AmbientLight(0xfffbf2, 3);
-const Light = new THREE.PointLight(0xfffffc, 1100);
-// const Light = new THREE.HemisphereLight(0xffefe3, 0xffffff, 3);
+const AmbientLight = new THREE.AmbientLight(0xfffefa, 0.3);
+const PointLight = new THREE.PointLight(0xfffffc, 900);
+const HemisphereLight = new THREE.HemisphereLight(0xffefe3, 0xfffef5, 0.6);
 // const Light = new THREE.DirectionalLight(0xffffff, 3);
-scene.add(Light);
-Light.position.set(3, 3, 20);
-Light.castShadow = true;
+scene.add(PointLight);
+scene.add(HemisphereLight);
+scene.add(AmbientLight);
+PointLight.position.set(3, 3, 20);
+PointLight.castShadow = true;
 // Light.target.position.set(0, 0, 0);
-Light.shadow.radius = 10;
+PointLight.shadow.radius = 10;
 
 // 그림자 맵의 해상도를 높임
-Light.shadow.mapSize.width = 2048;
-Light.shadow.mapSize.height = 2048;
+PointLight.shadow.mapSize.width = 2048;
+PointLight.shadow.mapSize.height = 2048;
 // 그림자 카메라의 보이는 범위 조절
-Light.shadow.camera.near = 0.5;
-Light.shadow.camera.far = 50;
-Light.shadow.camera.left = -10;
-Light.shadow.camera.right = 10;
-Light.shadow.camera.top = 10;
-Light.shadow.camera.bottom = -10;
+PointLight.shadow.camera.near = 0.5;
+PointLight.shadow.camera.far = 50;
+PointLight.shadow.camera.left = -10;
+PointLight.shadow.camera.right = 10;
+PointLight.shadow.camera.top = 10;
+PointLight.shadow.camera.bottom = -10;
 
 function resizeCanvas() {
   const canvasContainer = document.getElementById("canvasContainer");
@@ -153,6 +159,52 @@ class Player {
   }
 }
 
+let particleSystem = null;
+
+class ParticleSystem {
+  constructor(scene, count, color, size) {
+    this.particles = [];
+    this.geometry = new THREE.BufferGeometry();
+    this.material = new THREE.PointsMaterial({
+      color: 0xcfff8c,
+      size: size,
+      transparent: true,
+      opacity: 1,
+      depthWrite: false,
+    });
+
+    const positions = new Float32Array(count * 3);
+
+    for (let i = 0; i < count * 3; i++) {
+      positions[i] = (Math.random() - 0.5) * 10;
+    }
+
+    this.geometry.setAttribute(
+      "position",
+      new THREE.BufferAttribute(positions, 3)
+    );
+
+    this.particleSystem = new THREE.Points(this.geometry, this.material);
+    scene.add(this.particleSystem);
+  }
+
+  update() {
+    const positions = this.geometry.attributes.position.array;
+
+    for (let i = 0; i < positions.length; i += 3) {
+      positions[i + 1] -= Math.random() * 0.007;
+    }
+
+    this.geometry.attributes.position.needsUpdate = true;
+  }
+
+  destroy() {
+    this.particleSystem.geometry.dispose();
+    this.particleSystem.material.dispose();
+    scene.remove(this.particleSystem);
+  }
+}
+
 // 플레이어 생성
 const player1 = new Player(player1name);
 const player2 = new Player(player2name);
@@ -194,7 +246,28 @@ function renderScoreBoard() {
     const row = document.createElement("tr");
 
     const categoryCell = document.createElement("td");
-    categoryCell.textContent = category;
+    let iconClass = "";
+    switch (category) {
+      case "Aces":
+        iconClass = "fa-dice-one";
+        break;
+      case "Deuces":
+        iconClass = "fa-dice-two";
+        break;
+      case "Threes":
+        iconClass = "fa-dice-three";
+        break;
+      case "Fours":
+        iconClass = "fa-dice-four";
+        break;
+      case "Fives":
+        iconClass = "fa-dice-five";
+        break;
+      case "Sixes":
+        iconClass = "fa-dice-six";
+        break;
+    }
+    categoryCell.innerHTML = `<i class="fas ${iconClass}"></i> ${category}`;
     categoryCell.classList.add("category");
     row.appendChild(categoryCell);
 
@@ -203,9 +276,9 @@ function renderScoreBoard() {
       if (currentPlayer === player1 && rollState === "ready") {
         player1ScoreCell.textContent = score;
         player1ScoreCell.classList.add("selectable");
-        player1ScoreCell.addEventListener("click", () =>
-          selectScore(category, score)
-        );
+        player1ScoreCell.addEventListener("click", () => {
+          selectScore(category, score);
+        });
       } else {
         player1ScoreCell.textContent = "";
       }
@@ -257,12 +330,37 @@ function renderScoreBoard() {
 
   const bonusRow = document.createElement("tr");
   bonusRow.classList.add("bonus-row");
+
+  const player1BonusCell = document.createElement("td");
+  const player2BonusCell = document.createElement("td");
+
+  player1BonusCell.classList.add("bonus");
+  player2BonusCell.classList.add("bonus");
+
+  if (player1Subtotal >= 63 && !player1.bonusAnimationPlayed) {
+    player1.bonusScore = 35;
+    player1.bonusAnimationPlayed = true;
+    player1BonusCell.style.animation = "bonus 2s ease-in-out";
+  }
+  if (player2Subtotal >= 63 && !player2.bonusAnimationPlayed) {
+    player2.bonusScore = 35;
+    player2.bonusAnimationPlayed = true;
+    player2BonusCell.style.animation = "bonus 2s ease-in-out";
+  }
+
+  player1BonusCell.textContent = player1.bonusScore ? "+35" : "";
+  player2BonusCell.textContent = player2.bonusScore ? "+35" : "";
+
   bonusRow.innerHTML = `
     <td class="category">+35 Bonus</td>
-    <td class="bonus">${player1.bonusScore ? player1.bonusScore : ""}</td>
-    <td class="bonus">${player2.bonusScore ? player2.bonusScore : ""}</td>
   `;
+  bonusRow.appendChild(player1BonusCell);
+  bonusRow.appendChild(player2BonusCell);
+
   scoreBoard.appendChild(bonusRow);
+  //
+  // player1BonusCell.style.animation = "bonus 2s ease-in-out";
+  //
 
   const choiceSpacerRow = document.createElement("tr");
   choiceSpacerRow.innerHTML = `<td colspan="3" class="space"></td>`;
@@ -276,7 +374,28 @@ function renderScoreBoard() {
     const row = document.createElement("tr");
 
     const categoryCell = document.createElement("td");
-    categoryCell.textContent = category;
+    let iconClass = "";
+    switch (category) {
+      case "Choice":
+        iconClass = "fa-hand-pointer";
+        break;
+      case "4 of a Kind":
+        iconClass = "fa-vector-square";
+        break;
+      case "Full House":
+        iconClass = "fa-cubes";
+        break;
+      case "S. Straight":
+        iconClass = "fa-ellipsis-h";
+        break;
+      case "L. Straight":
+        iconClass = "fa-stairs";
+        break;
+      case "Yacht":
+        iconClass = "fa-dice-d20";
+        break;
+    }
+    categoryCell.innerHTML = `<i class="fas ${iconClass}"></i> ${category}`;
     categoryCell.classList.add("category");
     row.appendChild(categoryCell);
 
@@ -348,10 +467,8 @@ function renderScoreBoard() {
     const sortedCategories = maxScoreCategories.sort(
       (a, b) => cat_scores[b] - cat_scores[a]
     );
-    console.log(sortedCategories);
 
     for (const category of sortedCategories) {
-      // 이미 점수를 기록한 카테고리인지 확인
       if (currentPlayer.scores[category] === undefined) {
         const categoryElement = document.querySelector(
           ".category-notification"
@@ -360,10 +477,27 @@ function renderScoreBoard() {
         const canvasCenterX = canvasRect.left + canvasRect.width / 2;
         categoryElement.style.left = `${canvasCenterX}px`;
         categoryElement.textContent = category;
-        categoryElement.style.animation = "stamp 3s ease-in-out";
-        setTimeout(() => {
-          categoryElement.style.animation = "";
-        }, 3000);
+
+        if (category === "Yacht") {
+          categoryElement.style.animation = "stamp 3s ease-in-out";
+
+          // 파티클 효과 추가
+          particleSystem = new ParticleSystem(scene, 300, 0xffffff, 0.05);
+
+          setTimeout(() => {
+            categoryElement.style.animation = "";
+            // 3초 후에 파티클 효과 제거
+            if (particleSystem) {
+              particleSystem.destroy();
+              particleSystem = null;
+            }
+          }, 3000);
+        } else {
+          categoryElement.style.animation = "stamp 3s ease-in-out";
+          setTimeout(() => {
+            categoryElement.style.animation = "";
+          }, 3000);
+        }
         break;
       }
     }
@@ -472,7 +606,7 @@ createWall(
   new CANNON.Vec3(0, 0, -1.2),
   new CANNON.Vec3(0, 0, 0),
   // wallMaterial,
-  0x9c804f,
+  0xe8cf9b,
   "",
   0.3,
   0.5
@@ -500,8 +634,8 @@ createWall(
   // wallMaterial,
   0xff3d3d,
   "model/carpet-1.jpg",
-  0.1,
-  0.5
+  CarpetTexture[0],
+  CarpetTexture[1]
 ); // 카펫바닥
 
 // 벽 생성 코드 수정
@@ -514,8 +648,8 @@ createWall(
   // sideWallMaterial,
   null,
   "model/wall.jpg",
-  0.7,
-  0.2,
+  WallTexture[0],
+  WallTexture[1],
   sideWallMaterial
 ); // 앞쪽 벽
 createWall(
@@ -527,8 +661,8 @@ createWall(
   // sideWallMaterial,
   null,
   "model/wall.jpg",
-  0.7,
-  0.2,
+  WallTexture[0],
+  WallTexture[1],
   sideWallMaterial
 ); // 뒤쪽 벽
 createWall(
@@ -540,8 +674,8 @@ createWall(
   // sideWallMaterial,
   null,
   "model/wall.jpg",
-  0.7,
-  0.2,
+  WallTexture[0],
+  WallTexture[1],
   sideWallMaterial
 ); // 오른쪽 벽
 createWall(
@@ -553,8 +687,8 @@ createWall(
   // sideWallMaterial,
   null,
   "model/wall.jpg",
-  0.7,
-  0.2,
+  WallTexture[0],
+  WallTexture[1],
   sideWallMaterial
 ); // 왼쪽 벽
 
@@ -1286,6 +1420,10 @@ function animate(timestamp) {
 
   updatePhysics(timestamp);
   TWEEN.update();
+
+  if (particleSystem) {
+    particleSystem.update();
+  }
 
   if (diceStopped && !resultsDisplayed) {
     showDiceResults();

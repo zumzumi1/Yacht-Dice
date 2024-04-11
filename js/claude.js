@@ -276,9 +276,9 @@ function renderScoreBoard() {
       if (currentPlayer === player1 && rollState === "ready") {
         player1ScoreCell.textContent = score;
         player1ScoreCell.classList.add("selectable");
-        player1ScoreCell.addEventListener("click", () =>
-          selectScore(category, score)
-        );
+        player1ScoreCell.addEventListener("click", () => {
+          selectScore(category, score);
+        });
       } else {
         player1ScoreCell.textContent = "";
       }
@@ -361,7 +361,7 @@ function renderScoreBoard() {
   //
   // player1BonusCell.style.animation = "bonus 2s ease-in-out";
   //
-  
+
   const choiceSpacerRow = document.createElement("tr");
   choiceSpacerRow.innerHTML = `<td colspan="3" class="space"></td>`;
   scoreBoard.appendChild(choiceSpacerRow);
@@ -467,9 +467,8 @@ function renderScoreBoard() {
     const sortedCategories = maxScoreCategories.sort(
       (a, b) => cat_scores[b] - cat_scores[a]
     );
-    console.log(sortedCategories);
 
-    for (const category of maxScoreCategories) {
+    for (const category of sortedCategories) {
       if (currentPlayer.scores[category] === undefined) {
         const categoryElement = document.querySelector(
           ".category-notification"
