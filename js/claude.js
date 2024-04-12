@@ -563,6 +563,7 @@ function renderScoreBoard() {
   } Left`;
 }
 
+let IsGameover = false;
 let lastClickedScore = null;
 let lastScoreClickTime = 0;
 // 점수 선택 함수 수정
@@ -581,27 +582,28 @@ function selectScore(category, score) {
   renderScoreBoard();
   checkGameOver();
 
-  document.getElementById("remainingRolls").textContent = `${
-    0
-  } Left`;
+  document.getElementById("remainingRolls").textContent = `${0} Left`;
 
-  setTimeout(() => {
-    rollDiceButton.disabled = false; // 버튼 활성화
-
-    document.getElementById(
-      "currentPlayer"
-    ).textContent = `${currentPlayer.name}`;
-    document.getElementById("rollDiceButton").style.display = "block";
-    const categoryElement = document.querySelector(".category-notification");
-    categoryElement.style.opacity = "0";
-    const nextPlayerElement = document.querySelector(".nextplayer");
-    nextPlayerElement.style.opacity = "1";
+  if (!IsGameover) {
     setTimeout(() => {
-      nextPlayerElement.style.opacity = "0";
-    }, 1200);
-    rollState = "ready";
-    resetAndRollDice();
-  }, 1000); // 1초(1000ms) 후에 resetAndRollDice 함수 호출
+      rollDiceButton.disabled = false; // 버튼 활성화
+
+      document.getElementById(
+        "currentPlayer"
+      ).textContent = `${currentPlayer.name}`;
+      document.getElementById("rollDiceButton").style.display = "block";
+      const categoryElement = document.querySelector(".category-notification");
+      categoryElement.style.opacity = "0";
+      const nextPlayerElement = document.querySelector(".nextplayer");
+      nextPlayerElement.textContent = `${currentPlayer.name}'s Turn`;
+      nextPlayerElement.style.opacity = "1";
+      setTimeout(() => {
+        nextPlayerElement.style.opacity = "0";
+      }, 1200);
+      rollState = "ready";
+      resetAndRollDice();
+    }, 1000); // 1초(1000ms) 후에 resetAndRollDice 함수 호출
+  }
 }
 
 // 게임 종료 확인 함수 추가
@@ -610,15 +612,16 @@ function checkGameOver() {
     Object.keys(player1.scores).length === 12 &&
     Object.keys(player2.scores).length === 12
   ) {
+    IsGameover = true;
     const winner =
       player1.totalScore + player1.bonusScore >
       player2.totalScore + player2.bonusScore
         ? player1
         : player2;
     const gameoverElement = document.querySelector(".category-notification");
-    gameoverElement.classList.add('.gameover')
+    gameoverElement.classList.add(".gameover");
     gameoverElement.innerHTML = `Game Over!<br>Winner: ${winner.name}`;
-    gameoverElement.style.animation = "stamp 3s ease-in-out";
+    gameoverElement.style.animation = "stamp 10s ease-in-out";
     particleSystem = new ParticleSystem(scene, 400, 0xffffff, 0.05);
     rollCount = 3;
     rollDiceButton.disabled = true;
