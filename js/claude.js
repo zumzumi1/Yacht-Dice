@@ -568,41 +568,45 @@ let lastClickedScore = null;
 let lastScoreClickTime = 0;
 // 점수 선택 함수 수정
 function selectScore(category, score) {
-  lastScoreClickTime = new Date().getTime();
-  currentPlayer.addScore(category, score);
-  lastClickedScore = { player: currentPlayer, category: category };
-  rollCount = 0;
-  document.getElementById("rollDiceButton").style.display = "none";
-  currentPlayer = currentPlayer === player1 ? player2 : player1;
-  // turnEnded = true;
-  // document.getElementById("diceResults").innerText = `총 결과: `;
-  // document.getElementById("keptDiceResults").innerText = `킵한 주사위: `;
+  if (diceStopped) {
+    lastScoreClickTime = new Date().getTime();
+    currentPlayer.addScore(category, score);
+    lastClickedScore = { player: currentPlayer, category: category };
+    rollCount = 0;
+    document.getElementById("rollDiceButton").style.display = "none";
+    currentPlayer = currentPlayer === player1 ? player2 : player1;
+    // turnEnded = true;
+    // document.getElementById("diceResults").innerText = `총 결과: `;
+    // document.getElementById("keptDiceResults").innerText = `킵한 주사위: `;
 
-  keptDice.length = 0;
-  renderScoreBoard();
-  checkGameOver();
+    keptDice.length = 0;
+    renderScoreBoard();
+    checkGameOver();
 
-  document.getElementById("remainingRolls").textContent = `${0} Left`;
+    document.getElementById("remainingRolls").textContent = `${0} Left`;
 
-  if (!IsGameover) {
-    setTimeout(() => {
-      rollDiceButton.disabled = false; // 버튼 활성화
-
-      document.getElementById(
-        "currentPlayer"
-      ).textContent = `${currentPlayer.name}`;
-      document.getElementById("rollDiceButton").style.display = "block";
-      const categoryElement = document.querySelector(".category-notification");
-      categoryElement.style.opacity = "0";
-      const nextPlayerElement = document.querySelector(".nextplayer");
-      nextPlayerElement.textContent = `${currentPlayer.name}'s Turn`;
-      nextPlayerElement.style.opacity = "1";
+    if (!IsGameover) {
       setTimeout(() => {
-        nextPlayerElement.style.opacity = "0";
-      }, 1200);
-      rollState = "ready";
-      resetAndRollDice();
-    }, 1000); // 1초(1000ms) 후에 resetAndRollDice 함수 호출
+        rollDiceButton.disabled = false; // 버튼 활성화
+
+        document.getElementById(
+          "currentPlayer"
+        ).textContent = `${currentPlayer.name}`;
+        document.getElementById("rollDiceButton").style.display = "block";
+        const categoryElement = document.querySelector(
+          ".category-notification"
+        );
+        categoryElement.style.opacity = "0";
+        const nextPlayerElement = document.querySelector(".nextplayer");
+        nextPlayerElement.textContent = `${currentPlayer.name}'s Turn`;
+        nextPlayerElement.style.opacity = "1";
+        setTimeout(() => {
+          nextPlayerElement.style.opacity = "0";
+        }, 1200);
+        rollState = "ready";
+        resetAndRollDice();
+      }, 1000); // 1초(1000ms) 후에 resetAndRollDice 함수 호출
+    }
   }
 }
 
