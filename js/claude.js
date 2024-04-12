@@ -573,9 +573,6 @@ function selectScore(category, score) {
   rollCount = 0;
   document.getElementById("rollDiceButton").style.display = "none";
   currentPlayer = currentPlayer === player1 ? player2 : player1;
-  document.getElementById(
-    "currentPlayer"
-  ).textContent = `${currentPlayer.name}`;
   // turnEnded = true;
   // document.getElementById("diceResults").innerText = `총 결과: `;
   // document.getElementById("keptDiceResults").innerText = `킵한 주사위: `;
@@ -584,9 +581,16 @@ function selectScore(category, score) {
   renderScoreBoard();
   checkGameOver();
 
+  document.getElementById("remainingRolls").textContent = `${
+    0
+  } Left`;
+
   setTimeout(() => {
     rollDiceButton.disabled = false; // 버튼 활성화
 
+    document.getElementById(
+      "currentPlayer"
+    ).textContent = `${currentPlayer.name}`;
     document.getElementById("rollDiceButton").style.display = "block";
     const categoryElement = document.querySelector(".category-notification");
     categoryElement.style.opacity = "0";
