@@ -604,13 +604,6 @@ function selectScore(category, score) {
   }, 1000); // 1초(1000ms) 후에 resetAndRollDice 함수 호출
 }
 
-function removeCurrentPlayerBackground() {
-  const currentPlayerCells = document.querySelectorAll(".current-player");
-  currentPlayerCells.forEach((cell) => {
-    cell.classList.remove("current-player");
-  });
-}
-
 // 게임 종료 확인 함수 추가
 function checkGameOver() {
   if (
@@ -623,6 +616,7 @@ function checkGameOver() {
         ? player1
         : player2;
     const gameoverElement = document.querySelector(".category-notification");
+    gameoverElement.classList.add('.gameover')
     gameoverElement.innerHTML = `Game Over!<br>Winner: ${winner.name}`;
     gameoverElement.style.animation = "stamp 3s ease-in-out";
     particleSystem = new ParticleSystem(scene, 400, 0xffffff, 0.05);
