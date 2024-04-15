@@ -20,6 +20,24 @@
     onselectstart="return false"
     ondragstart="return false">
     <script src="js/claude.js" type="module" defer></script>
+    <div id="playerNameForm" class="hidden">
+      <h2>플레이어 이름 입력</h2>
+      <div class="input-container">
+        <input
+          type="text"
+          id="player1Name"
+          placeholder="Player 1 이름"
+          required
+          autocomplete="off" />
+        <input
+          type="text"
+          id="player2Name"
+          placeholder="Player 2 이름"
+          required
+          autocomplete="off" />
+      </div>
+      <button id="startGameButton">게임 시작</button>
+    </div>
     <!-- index.html -->
     <div class="nextplayer"></div>
     <!-- <div class="category-noti">
@@ -42,8 +60,8 @@
           <thead>
             <tr class="top-row">
               <th>Category</th>
-              <th>Player 1</th>
-              <th>Player 2</th>
+              <th class="player1">Player 1</th>
+              <th class="player2">Player 2</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -97,6 +115,83 @@
       font-weight: 700;
     }
 
+    .player1,
+    .player2 {
+      width: 100px;
+      max-width: 100px;
+      min-width: 100px;
+    }
+
+    .category {
+      width: calc(100% - 200px);
+      max-width: calc(100% - 200px);
+      min-width: calc(100% - 200px);
+    }
+
+    #playerNameForm {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: rgba(255, 255, 255, 0.8);
+      color: rgb(0, 0, 0);
+      backdrop-filter: blur(10px);
+      padding: 40px;
+      width: 500px;
+      border-radius: 10px;
+      text-align: center;
+      font-size: 2rem;
+      transition: opacity 0.5s;
+      box-shadow: 0px 0px 20px 10px rgba(0, 0, 0, 0.2);
+      z-index: 10;
+      white-space: nowrap;
+      box-sizing: border-box;
+    }
+
+    #playerNameForm h2 {
+      margin-bottom: 30px;
+      font-size: 2.5rem;
+      color: #333;
+    }
+
+    #playerNameForm .input-container {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    #playerNameForm input {
+      padding: 12px;
+      width: 45%;
+      border: none;
+      border-radius: 5px;
+      font-size: 1.5rem;
+      background-color: rgba(255, 255, 255, 0.9);
+      box-shadow: 0px 0px 5px 2px rgba(0, 0, 0, 0.1);
+      box-sizing: border-box;
+    }
+
+    #playerNameForm input:focus {
+      outline: none;
+      box-shadow: 0px 0px 5px 2px rgba(0, 123, 255, 0.5);
+    }
+
+    #playerNameForm button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1.5rem;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.3s;
+    }
+
+    #playerNameForm button:hover {
+      background-color: #0056b3;
+    }
+
     #settingsIcon {
       position: absolute;
       bottom: 20px;
@@ -142,9 +237,12 @@
       gap: 10px;
     }
 
+    #settingsPopup select {
+      padding: 3px;
+    }
+
     #settingsPopup button {
-      margin-right: 10px;
-      width: calc(50% - 13px);
+      width: calc(50% - 2px);
     }
 
     .nextplayer {
@@ -351,6 +449,7 @@
       height: calc(100vh - 150px);
       margin-top: 8px;
       overflow-x: hidden;
+      white-space: nowrap;
     }
 
     .score::-webkit-scrollbar {
@@ -463,7 +562,6 @@
       position: absolute;
       height: 100vh;
       min-width: 280px;
-      width: 20vw;
       background-color: rgba(255, 255, 255, 0.555);
       backdrop-filter: blur(4px);
       box-shadow: 0px 0px 10px 5px rgba(0, 0, 0, 0.25);

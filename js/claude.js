@@ -256,6 +256,41 @@ class ParticleSystem {
   }
 }
 
+let isGameStarted = false;
+
+const playerNameForm = document.getElementById("playerNameForm");
+const player1NameInput = document.getElementById("player1Name");
+const player2NameInput = document.getElementById("player2Name");
+const startGameButton = document.getElementById("startGameButton");
+
+// 게임 시작 버튼 클릭 이벤트 처리
+startGameButton.addEventListener("click", () => {
+  const player1Name = player1NameInput.value.trim();
+  const player2Name = player2NameInput.value.trim();
+
+  if (player1Name !== "" && player2Name !== "") {
+    player1.name = player1Name;
+    player2.name = player2Name;
+
+    // 플레이어 이름이 5글자를 넘어가면 뒷부분을 "..."으로 대체
+    const displayPlayer1Name =
+      player1Name.length > 5 ? player1Name.slice(0, 5) + "..." : player1Name;
+    const displayPlayer2Name =
+      player2Name.length > 5 ? player2Name.slice(0, 5) + "..." : player2Name;
+
+    document.querySelector(".player1").textContent = displayPlayer1Name;
+    document.querySelector(".player2").textContent = displayPlayer2Name;
+    document.getElementById(
+      "currentPlayer"
+    ).textContent = `${currentPlayer.name.slice(0, 10)}${
+      currentPlayer.name.length > 10 ? "..." : ""
+    }`;
+    playerNameForm.style.display = "none"; // 플레이어 이름 입력 폼 숨기기
+    isGameStarted = true;
+    renderScoreBoard();
+  }
+});
+
 // 플레이어 생성
 const player1 = new Player(player1name);
 const player2 = new Player(player2name);
@@ -288,6 +323,10 @@ function renderScoreBoard() {
     "L. Straight",
     "Yacht",
   ];
+
+  const player1nameCell = document.querySelector(".player1");
+
+  const player2nameCell = document.querySelector(".player2");
 
   upperCategories.forEach((category) => {
     const score = scores[category];
@@ -642,14 +681,18 @@ function selectScore(category, score) {
 
         document.getElementById(
           "currentPlayer"
-        ).textContent = `${currentPlayer.name}`;
+        ).textContent = `${currentPlayer.name.slice(0, 10)}${
+          currentPlayer.name.length > 10 ? "..." : ""
+        }`;
         document.getElementById("rollDiceButton").style.display = "block";
         const categoryElement = document.querySelector(
           ".category-notification"
         );
         categoryElement.style.opacity = "0";
         const nextPlayerElement = document.querySelector(".nextplayer");
-        nextPlayerElement.textContent = `${currentPlayer.name}'s Turn`;
+        nextPlayerElement.textContent = `${currentPlayer.name.slice(0, 10)}${
+          currentPlayer.name.length > 10 ? "..." : ""
+        } Turn`;
         nextPlayerElement.style.opacity = "1";
         setTimeout(() => {
           nextPlayerElement.style.opacity = "0";
@@ -1516,10 +1559,12 @@ let lastButtonClick = 0;
 const buttonCooldown = CoolTime; // 쿨타임 (ms)
 // 버튼 클릭 이벤트에 함수 연결
 rollDiceButton.addEventListener("click", function (event) {
-  const currentTime = new Date().getTime();
-  if (currentTime - lastButtonClick > buttonCooldown) {
-    lastButtonClick = currentTime;
-    resetAndRollDice();
+  if (isGameStarted) {
+    const currentTime = new Date().getTime();
+    if (currentTime - lastButtonClick > buttonCooldown) {
+      lastButtonClick = currentTime;
+      resetAndRollDice();
+    }
   }
 });
 
@@ -1528,7 +1573,7 @@ const spacebarCooldown = CoolTime; // 쿨타임 (ms)
 
 // 스페이스바 누르면 주사위 굴리기 버튼 클릭 이벤트 발생
 document.addEventListener("keydown", function (event) {
-  if (event.code === "Space" && diceStopped) {
+  if (isGameStarted && event.code === "Space" && diceStopped) {
     const currentTime = new Date().getTime();
     if (
       currentTime - lastSpacebarPress > spacebarCooldown &&

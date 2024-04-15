@@ -59,6 +59,30 @@
       <button id="rollDiceButton">Roll ready</button>
     </div>
     <div id="canvasContainer"></div>
+    <!-- 설정 아이콘 -->
+    <i id="settingsIcon" class="fas fa-cog"></i>
+
+    <!-- 설정 팝업 창 -->
+    <div id="settingsPopup" class="hidden">
+      <h2>그래픽 설정</h2>
+      <div class="setting-row">
+        <label for="lightQuality">빛 품질</label>
+        <select id="lightQuality">
+          <option value="high" selected>높음</option>
+          <option value="medium">보통</option>
+          <option value="low">낮음</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label for="shadowQuality">그림자</label>
+        <select id="shadowQuality">
+          <option value="on" selected>켜기</option>
+          <option value="off">끄기</option>
+        </select>
+      </div>
+      <button id="applySettings">적용</button>
+      <button id="closeSettings">닫기</button>
+    </div>
   </body>
 
   <style>
@@ -71,6 +95,56 @@
       margin: 0;
       padding: 0;
       font-weight: 700;
+    }
+
+    #settingsIcon {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      font-size: 24px;
+      color: #fff;
+      cursor: pointer;
+      z-index: 2;
+      transform-origin: center;
+      white-space: nowrap;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    #settingsIcon:hover {
+      transform: scale(1.2) rotate(180deg);
+    }
+
+    #settingsPopup {
+      position: absolute;
+      bottom: 60px;
+      right: 20px;
+      background-color: rgba(255, 255, 255, 0.9);
+      border-radius: 5px;
+      padding: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      z-index: 2;
+    }
+
+    #settingsPopup.hidden {
+      display: none;
+    }
+
+    #settingsPopup h2 {
+      margin: 0 0 10px 0;
+    }
+
+    #settingsPopup .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+
+    #settingsPopup button {
+      margin-right: 10px;
+      width: calc(50% - 13px);
     }
 
     .nextplayer {
