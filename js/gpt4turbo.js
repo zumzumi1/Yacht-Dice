@@ -285,6 +285,18 @@ function renderScoreBoard() {
     } else {
       player1ScoreCell.textContent = player1Score;
     }
+    if (
+      player1Score !== undefined &&
+      lastClickedScore &&
+      lastClickedScore.player === player1 &&
+      lastClickedScore.category === category
+    ) {
+      player1ScoreCell.classList.add("score-stamp");
+      lastClickedScore = null;
+    }
+    if (currentPlayer === player1) {
+      player1ScoreCell.classList.add("current-player");
+    }
 
     player1ScoreCell.classList.add("user-score");
     row.appendChild(player1ScoreCell);
@@ -303,6 +315,19 @@ function renderScoreBoard() {
     } else {
       player2ScoreCell.textContent = player2Score;
     }
+    if (
+      player2Score !== undefined &&
+      lastClickedScore &&
+      lastClickedScore.player === player2 &&
+      lastClickedScore.category === category
+    ) {
+      player2ScoreCell.classList.add("score-stamp");
+      lastClickedScore = null;
+    }
+    if (currentPlayer === player2) {
+      player2ScoreCell.classList.add("current-player");
+    }
+
     player2ScoreCell.classList.add("user-score");
     row.appendChild(player2ScoreCell);
 
@@ -413,6 +438,18 @@ function renderScoreBoard() {
     } else {
       player1ScoreCell.textContent = player1Score;
     }
+    if (
+      player1Score !== undefined &&
+      lastClickedScore &&
+      lastClickedScore.player === player1 &&
+      lastClickedScore.category === category
+    ) {
+      player1ScoreCell.classList.add("score-stamp");
+      lastClickedScore = null;
+    }
+    if (currentPlayer === player1) {
+      player1ScoreCell.classList.add("current-player");
+    }
 
     player1ScoreCell.classList.add("user-score");
     row.appendChild(player1ScoreCell);
@@ -431,6 +468,19 @@ function renderScoreBoard() {
     } else {
       player2ScoreCell.textContent = player2Score;
     }
+    if (
+      player2Score !== undefined &&
+      lastClickedScore &&
+      lastClickedScore.player === player2 &&
+      lastClickedScore.category === category
+    ) {
+      player2ScoreCell.classList.add("score-stamp");
+      lastClickedScore = null;
+    }
+    if (currentPlayer === player2) {
+      player2ScoreCell.classList.add("current-player");
+    }
+
     player2ScoreCell.classList.add("user-score");
     row.appendChild(player2ScoreCell);
 
@@ -513,11 +563,51 @@ function renderScoreBoard() {
   } Left`;
 }
 
-// 점수 선택 함수 추가
+let IsGameover = false;
+let lastClickedScore = null;
+let lastScoreClickTime = 0;
+// 점수 선택 함수 수정
 function selectScore(category, score) {
-  currentPlayer.addScore(category, score);
-  turnEnded = true;
-  resetAndRollDice();
+  if (diceStopped) {
+    lastScoreClickTime = new Date().getTime();
+    currentPlayer.addScore(category, score);
+    lastClickedScore = { player: currentPlayer, category: category };
+    rollCount = 0;
+    document.getElementById("rollDiceButton").style.display = "none";
+    currentPlayer = currentPlayer === player1 ? player2 : player1;
+    // turnEnded = true;
+    // document.getElementById("diceResults").innerText = `총 결과: `;
+    // document.getElementById("keptDiceResults").innerText = `킵한 주사위: `;
+
+    keptDice.length = 0;
+    renderScoreBoard();
+    checkGameOver();
+
+    document.getElementById("remainingRolls").textContent = `${0} Left`;
+
+    if (!IsGameover) {
+      setTimeout(() => {
+        rollDiceButton.disabled = false; // 버튼 활성화
+
+        document.getElementById(
+          "currentPlayer"
+        ).textContent = `${currentPlayer.name}`;
+        document.getElementById("rollDiceButton").style.display = "block";
+        const categoryElement = document.querySelector(
+          ".category-notification"
+        );
+        categoryElement.style.opacity = "0";
+        const nextPlayerElement = document.querySelector(".nextplayer");
+        nextPlayerElement.textContent = `${currentPlayer.name}'s Turn`;
+        nextPlayerElement.style.opacity = "1";
+        setTimeout(() => {
+          nextPlayerElement.style.opacity = "0";
+        }, 1200);
+        rollState = "ready";
+        resetAndRollDice();
+      }, 1000); // 1초(1000ms) 후에 resetAndRollDice 함수 호출
+    }
+  }
 }
 
 // 게임 종료 확인 함수 추가
@@ -526,13 +616,19 @@ function checkGameOver() {
     Object.keys(player1.scores).length === 12 &&
     Object.keys(player2.scores).length === 12
   ) {
+    IsGameover = true;
     const winner =
       player1.totalScore + player1.bonusScore >
       player2.totalScore + player2.bonusScore
         ? player1
         : player2;
-    alert(`Game Over! Winner: ${winner.name}`);
+    const gameoverElement = document.querySelector(".category-notification");
+    gameoverElement.classList.add(".gameover");
+    gameoverElement.innerHTML = `Game Over!<br>Winner: ${winner.name}`;
+    gameoverElement.style.animation = "stamp 10s ease-in-out";
+    particleSystem = new ParticleSystem(scene, 400, 0xffffff, 0.05);
     rollCount = 3;
+    rollDiceButton.disabled = true;
   }
 }
 
@@ -1265,30 +1361,6 @@ document.getElementById("currentPlayer").textContent = `${currentPlayer.name}`;
 function resetAndRollDice() {
   if (diceStopped) {
     if (turnEnded) {
-      rollCount = 0;
-      turnEnded = false;
-      currentPlayer = currentPlayer === player1 ? player2 : player1;
-      document.getElementById("rollDiceButton").style.display = "block";
-      document.getElementById(
-        "currentPlayer"
-      ).textContent = `${currentPlayer.name}`;
-      // document.getElementById("diceResults").innerText = `총 결과: `;
-      // document.getElementById("keptDiceResults").innerText = `킵한 주사위: `;
-      keptDice.length = 0;
-      renderScoreBoard();
-      checkGameOver();
-
-      rollDiceButton.disabled = false; // 버튼 활성화
-
-      const categoryElement = document.querySelector(".category-notification");
-      categoryElement.style.opacity = "0";
-
-      const nextPlayerElement = document.querySelector(".nextplayer");
-      nextPlayerElement.style.opacity = "1";
-      setTimeout(() => {
-        nextPlayerElement.style.opacity = "0";
-      }, 1200);
-      rollState = "ready";
     }
 
     if (rollCount < 3 && keptDice.length < 5) {
@@ -1407,9 +1479,11 @@ const spacebarCooldown = CoolTime; // 쿨타임 (ms)
 document.addEventListener("keydown", function (event) {
   if (event.code === "Space" && diceStopped) {
     const currentTime = new Date().getTime();
-    if (currentTime - lastSpacebarPress > spacebarCooldown) {
+    if (
+      currentTime - lastSpacebarPress > spacebarCooldown &&
+      currentTime - lastScoreClickTime > 1000
+    ) {
       lastSpacebarPress = currentTime;
-      // console.log("space : " + diceStopped);
       resetAndRollDice();
     }
   }

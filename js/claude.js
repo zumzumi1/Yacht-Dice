@@ -70,28 +70,79 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 let world = new CANNON.World();
 world.gravity.set(0, 0, -9.82); // 중력 설정
 
-const AmbientLight = new THREE.AmbientLight(0xfffefa, 0.3);
+const AmbientLight = new THREE.AmbientLight(0xfffefa, 0.4);
 const PointLight = new THREE.PointLight(0xfffffc, 900);
-const HemisphereLight = new THREE.HemisphereLight(0xffefe3, 0xfffef5, 0.6);
+const HemisphereLight = new THREE.HemisphereLight(0xffefe3, 0xfffef5, 0.4);
 // const Light = new THREE.DirectionalLight(0xffffff, 3);
-scene.add(PointLight);
-scene.add(HemisphereLight);
-scene.add(AmbientLight);
+
 PointLight.position.set(3, 3, 20);
 PointLight.castShadow = true;
 // Light.target.position.set(0, 0, 0);
-PointLight.shadow.radius = 10;
+PointLight.shadow.radius = 3;
 
 // 그림자 맵의 해상도를 높임
-PointLight.shadow.mapSize.width = 2048;
-PointLight.shadow.mapSize.height = 2048;
+PointLight.shadow.mapSize.width = 1024;
+PointLight.shadow.mapSize.height = 1024;
 // 그림자 카메라의 보이는 범위 조절
-PointLight.shadow.camera.near = 0.5;
-PointLight.shadow.camera.far = 50;
-PointLight.shadow.camera.left = -10;
-PointLight.shadow.camera.right = 10;
-PointLight.shadow.camera.top = 10;
-PointLight.shadow.camera.bottom = -10;
+// PointLight.shadow.camera.near = 0.5;
+// PointLight.shadow.camera.far = 50;
+// PointLight.shadow.camera.left = -10;
+// PointLight.shadow.camera.right = 10;
+// PointLight.shadow.camera.top = 10;
+// PointLight.shadow.camera.bottom = -10;
+
+scene.add(PointLight);
+scene.add(HemisphereLight);
+scene.add(AmbientLight);
+
+const settingsIcon = document.getElementById("settingsIcon");
+const settingsPopup = document.getElementById("settingsPopup");
+const applySettingsButton = document.getElementById("applySettings");
+const closeSettingsButton = document.getElementById("closeSettings");
+
+settingsIcon.addEventListener("click", () => {
+  settingsPopup.classList.toggle("hidden");
+});
+
+applySettingsButton.addEventListener("click", () => {
+  const lightQuality = document.getElementById("lightQuality").value;
+  const shadowQuality = document.getElementById("shadowQuality").value;
+
+  // 빛 품질 설정 적용
+  switch (lightQuality) {
+    case "high":
+      AmbientLight.visible = true;
+      PointLight.visible = true;
+      HemisphereLight.visible = true;
+      break;
+    case "medium":
+      AmbientLight.visible = true;
+      PointLight.visible = true;
+      HemisphereLight.visible = false;
+      break;
+    case "low":
+      AmbientLight.visible = false;
+      PointLight.visible = true;
+      HemisphereLight.visible = false;
+      break;
+  }
+
+  // 그림자 품질 설정 적용
+  switch (shadowQuality) {
+    case "on":
+      PointLight.shadow.mapSize.width = 1024;
+      PointLight.shadow.mapSize.height = 1024;
+      PointLight.castShadow = true;
+      break;
+    case "off":
+      PointLight.castShadow = false;
+      break;
+  }
+});
+
+closeSettingsButton.addEventListener("click", () => {
+  settingsPopup.classList.add("hidden");
+});
 
 function resizeCanvas() {
   const canvasContainer = document.getElementById("canvasContainer");
