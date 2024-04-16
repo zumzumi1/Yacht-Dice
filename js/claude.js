@@ -665,7 +665,7 @@ function selectScore(category, score) {
     rollCount = 0;
     document.getElementById("rollDiceButton").style.display = "none";
     currentPlayer = currentPlayer === player1 ? player2 : player1;
-    // turnEnded = true;
+    turnEnded = true;
     // document.getElementById("diceResults").innerText = `총 결과: `;
     // document.getElementById("keptDiceResults").innerText = `킵한 주사위: `;
 
@@ -1188,7 +1188,6 @@ let sortedDiceIndices = [];
 function showDiceResults() {
   isKeptDiceSelected = false;
   diceStopped = false;
-
   let results;
 
   if (DebugMode) {
@@ -1285,6 +1284,7 @@ function showDiceResults() {
   }
   renderScoreBoard();
   diceStopped = true;
+  highlightSelectedDice();
 }
 
 function getRotationByValue(value) {
@@ -1437,6 +1437,23 @@ window.addEventListener("click", onDiceClick);
 
 let selectedDiceIndex = 0;
 let isKeptDiceSelected = false;
+let isCategorySelected = false; // 카테고리 선택 모드 여부를 추적하는 변수
+let selectedCategoryIndex = 0; // 선택된 카테고리 인덱스
+
+const categories = [
+  "Aces",
+  "Deuces",
+  "Threes",
+  "Fours",
+  "Fives",
+  "Sixes",
+  "Choice",
+  "4 of a Kind",
+  "Full House",
+  "S. Straight",
+  "L. Straight",
+  "Yacht",
+];
 
 function handleKeyDown(event) {
   if (diceStopped && rollCount > 0) {
@@ -1447,45 +1464,105 @@ function handleKeyDown(event) {
     if (event.key === "a" || event.key === "A" || event.key === "ArrowLeft") {
       if (isKeptDiceSelected) {
         selectedDiceIndex = Math.max(0, selectedDiceIndex - 1);
+      } else if (isCategorySelected) {
+        selectedCategoryIndex = Math.max(0, selectedCategoryIndex - 1);
+        highlightSelectedCategory();
       } else {
-        selectedDiceIndex = Math.max(0, selectedDiceIndex - 1);
-        if (selectedDiceIndex >= remainingDiceIndices.length) {
-          selectedDiceIndex = remainingDiceIndices.length - 1;
+        selectedDiceIndex = Math.max(-1, selectedDiceIndex - 1);
+        if (selectedDiceIndex < 0) {
+          isCategorySelected = true;
+          selectedCategoryIndex = categories.findIndex(
+            (category) => currentPlayer.scores[category] === undefined
+          );
+          if (selectedCategoryIndex === -1) {
+            selectedCategoryIndex = 0;
+          }
+          highlightSelectedCategory();
         }
       }
-    } else if (event.key === "d" || event.key === "D" || event.key === "ArrowRight") {
+    } else if (
+      event.key === "d" ||
+      event.key === "D" ||
+      event.key === "ArrowRight"
+    ) {
       if (isKeptDiceSelected) {
         selectedDiceIndex = Math.min(
           keptDice.length - 1,
           selectedDiceIndex + 1
         );
+      } else if (isCategorySelected) {
+        isCategorySelected = false;
+        // console.log("isCategorySelected = false;");
+        selectedDiceIndex = 0;
+        clearCategoryHighlight();
       } else {
         selectedDiceIndex = Math.min(
           remainingDiceIndices.length - 1,
           selectedDiceIndex + 1
         );
       }
-    } else if (event.key === "w" || event.key === "W" || event.key === "ArrowUp") {
-      if (keptDice.length !== 0) {
-        isKeptDiceSelected = true;
-        selectedDiceIndex = Math.min(keptDice.length - 1, selectedDiceIndex);
-        if (keptDice.length > 0) {
-          selectedDiceIndex = 0;
+    } else if (
+      event.key === "w" ||
+      event.key === "W" ||
+      event.key === "ArrowUp"
+    ) {
+      if (isCategorySelected) {
+        let prevSelectedCategoryIndex = selectedCategoryIndex;
+        do {
+          selectedCategoryIndex =
+            (selectedCategoryIndex - 1 + categories.length) % categories.length;
+        } while (
+          selectedCategoryIndex !== prevSelectedCategoryIndex &&
+          currentPlayer.scores[categories[selectedCategoryIndex]] !== undefined
+        );
+        highlightSelectedCategory();
+      } else {
+        if (keptDice.length !== 0) {
+          isKeptDiceSelected = true;
+          selectedDiceIndex = Math.min(keptDice.length - 1, selectedDiceIndex);
+          if (keptDice.length > 0) {
+            selectedDiceIndex = 0;
+          }
         }
       }
-    } else if (event.key === "s" || event.key === "S" || event.key === "ArrowDown") {
-      if (keptDice.length !== 5) {
-        isKeptDiceSelected = false;
-        selectedDiceIndex = Math.min(
-          remainingDiceIndices.length - 1,
-          selectedDiceIndex
+    } else if (
+      event.key === "s" ||
+      event.key === "S" ||
+      event.key === "ArrowDown"
+    ) {
+      if (isCategorySelected) {
+        let prevSelectedCategoryIndex = selectedCategoryIndex;
+        do {
+          selectedCategoryIndex =
+            (selectedCategoryIndex + 1) % categories.length;
+        } while (
+          selectedCategoryIndex !== prevSelectedCategoryIndex &&
+          currentPlayer.scores[categories[selectedCategoryIndex]] !== undefined
         );
-        if (remainingDiceIndices.length > 0) {
-          selectedDiceIndex = 0;
+        highlightSelectedCategory();
+      } else {
+        if (keptDice.length !== 5) {
+          isKeptDiceSelected = false;
+          selectedDiceIndex = Math.min(
+            remainingDiceIndices.length - 1,
+            selectedDiceIndex
+          );
+          if (remainingDiceIndices.length > 0) {
+            selectedDiceIndex = 0;
+          }
         }
       }
     } else if (event.key === "Enter") {
-      if (isKeptDiceSelected) {
+      if (isCategorySelected) {
+        const selectedCategory = categories[selectedCategoryIndex];
+        const score = judge.scoreBoard(diceMeshes.map(findTopFace).map(Number))[
+          selectedCategory
+        ];
+        if (currentPlayer.scores[selectedCategory] === undefined) {
+          selectScore(selectedCategory, score);
+          isCategorySelected = false;
+        }
+      } else if (isKeptDiceSelected) {
         if (keptDice.length > 0) {
           const index = keptDice[selectedDiceIndex];
           const keptIndex = keptDice.indexOf(index);
@@ -1504,7 +1581,9 @@ function handleKeyDown(event) {
           }
         }
       }
-      positionKeptDice();
+      if (!turnEnded) {
+        positionKeptDice();
+      }
     }
 
     highlightSelectedDice();
@@ -1548,6 +1627,44 @@ function highlightSelectedDice() {
   }
 }
 
+function highlightSelectedCategory() {
+  const categories = [
+    "Aces",
+    "Deuces",
+    "Threes",
+    "Fours",
+    "Fives",
+    "Sixes",
+    "Choice",
+    "4 of a Kind",
+    "Full House",
+    "S. Straight",
+    "L. Straight",
+    "Yacht",
+  ];
+
+  const categoryScoreCells = document.querySelectorAll(".user-score");
+  categoryScoreCells.forEach((cell) => {
+    const categoryText = cell.parentNode.firstChild.textContent.trim();
+    if (cell.classList.contains("current-player")) {
+      if (categories[selectedCategoryIndex] === categoryText) {
+        cell.classList.add("category-selected");
+      } else {
+        cell.classList.remove("category-selected");
+      }
+    } else {
+      cell.classList.remove("category-selected");
+    }
+  });
+}
+
+function clearCategoryHighlight() {
+  const categoryScoreCells = document.querySelectorAll(".user-score");
+  categoryScoreCells.forEach((cell) => {
+    cell.classList.remove("category-selected");
+  });
+}
+
 document.addEventListener("keydown", handleKeyDown);
 
 // 버튼 찾기
@@ -1561,6 +1678,7 @@ document.getElementById("currentPlayer").textContent = `${currentPlayer.name}`;
 function resetAndRollDice() {
   if (diceStopped) {
     if (turnEnded) {
+      turnEnded = false;
     }
     diceMeshes.forEach((diceMesh) => {
       if (diceMesh && diceMesh.children.length > 1) {
@@ -1605,6 +1723,7 @@ function resetAndRollDice() {
         });
         rollDiceButton.innerText = "Reroll"; // 버튼 텍스트 변경
       } else if (rollState === "prepare") {
+        clearCategoryHighlight();
         rollState = "roll";
         rollCount++;
 

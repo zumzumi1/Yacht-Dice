@@ -28,7 +28,7 @@
           id="player1Name"
           placeholder="Player 1"
           required
-          autocomplete="off" />
+          autocomplete="off" autofocus />
         <input
           type="text"
           id="player2Name"
@@ -486,11 +486,17 @@
       cursor: pointer;
       color: rgb(130, 130, 130);
       background-color: rgba(255, 205, 80, 0.346);
+      transition: all 0.1s;
     }
 
     .selectable:hover {
       background-color: rgba(255, 136, 0, 0.531);
       /* border: 2px aqua solid; */
+    }
+
+    .category-selected {
+      background-color: rgba(255, 136, 0, 0.531);
+      border: solid 2px aquamarine;
     }
 
     .category {
