@@ -21,22 +21,22 @@
     ondragstart="return false">
     <script src="js/claude.js" type="module" defer></script>
     <div id="playerNameForm" class="hidden">
-      <h2>플레이어 이름 입력</h2>
+      <h2>Player Name</h2>
       <div class="input-container">
         <input
           type="text"
           id="player1Name"
-          placeholder="Player 1 이름"
+          placeholder="Player 1"
           required
           autocomplete="off" />
         <input
           type="text"
           id="player2Name"
-          placeholder="Player 2 이름"
+          placeholder="Player 2"
           required
           autocomplete="off" />
       </div>
-      <button id="startGameButton">게임 시작</button>
+      <button id="startGameButton">Game Start!</button>
     </div>
     <!-- index.html -->
     <div class="nextplayer"></div>
@@ -82,24 +82,24 @@
 
     <!-- 설정 팝업 창 -->
     <div id="settingsPopup" class="hidden">
-      <h2>그래픽 설정</h2>
+      <h2>Graphic settings</h2>
       <div class="setting-row">
-        <label for="lightQuality">빛 품질</label>
+        <label for="lightQuality">Light Quality</label>
         <select id="lightQuality">
-          <option value="high" selected>높음</option>
-          <option value="medium">보통</option>
-          <option value="low">낮음</option>
+          <option value="high" selected>High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
         </select>
       </div>
       <div class="setting-row">
-        <label for="shadowQuality">그림자</label>
+        <label for="shadowQuality">Shadow</label>
         <select id="shadowQuality">
-          <option value="on" selected>켜기</option>
-          <option value="off">끄기</option>
+          <option value="on" selected>On</option>
+          <option value="off">Off</option>
         </select>
       </div>
-      <button id="applySettings">적용</button>
-      <button id="closeSettings">닫기</button>
+      <button id="applySettings">Apply</button>
+      <button id="closeSettings">Close</button>
     </div>
   </body>
 

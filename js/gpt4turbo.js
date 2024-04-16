@@ -14,7 +14,7 @@ const DiceMass = 500;
 //마찰, 탄성계수
 const Dice2Dice = [0, 0.3];
 const Dice2Floor = [0.2, 0.3];
-const Dice2Wall = [0.1, 0.5];
+const Dice2Wall = [0.1, 0.7];
 //벽 재질(matalness, roughness)
 const CarpetTexture = [0.1, 0.5];
 const WallTexture = [0.7, 0.3];
@@ -256,6 +256,41 @@ class ParticleSystem {
   }
 }
 
+let isGameStarted = false;
+
+const playerNameForm = document.getElementById("playerNameForm");
+const player1NameInput = document.getElementById("player1Name");
+const player2NameInput = document.getElementById("player2Name");
+const startGameButton = document.getElementById("startGameButton");
+
+// 게임 시작 버튼 클릭 이벤트 처리
+startGameButton.addEventListener("click", () => {
+  const player1Name = player1NameInput.value.trim();
+  const player2Name = player2NameInput.value.trim();
+
+  if (player1Name !== "" && player2Name !== "") {
+    player1.name = player1Name;
+    player2.name = player2Name;
+
+    // 플레이어 이름이 5글자를 넘어가면 뒷부분을 "..."으로 대체
+    const displayPlayer1Name =
+      player1Name.length > 5 ? player1Name.slice(0, 5) + "..." : player1Name;
+    const displayPlayer2Name =
+      player2Name.length > 5 ? player2Name.slice(0, 5) + "..." : player2Name;
+
+    document.querySelector(".player1").textContent = displayPlayer1Name;
+    document.querySelector(".player2").textContent = displayPlayer2Name;
+    document.getElementById(
+      "currentPlayer"
+    ).textContent = `${currentPlayer.name.slice(0, 10)}${
+      currentPlayer.name.length > 10 ? "..." : ""
+    }`;
+    playerNameForm.style.display = "none"; // 플레이어 이름 입력 폼 숨기기
+    isGameStarted = true;
+    renderScoreBoard();
+  }
+});
+
 // 플레이어 생성
 const player1 = new Player(player1name);
 const player2 = new Player(player2name);
@@ -288,6 +323,10 @@ function renderScoreBoard() {
     "L. Straight",
     "Yacht",
   ];
+
+  const player1nameCell = document.querySelector(".player1");
+
+  const player2nameCell = document.querySelector(".player2");
 
   upperCategories.forEach((category) => {
     const score = scores[category];
@@ -642,14 +681,18 @@ function selectScore(category, score) {
 
         document.getElementById(
           "currentPlayer"
-        ).textContent = `${currentPlayer.name}`;
+        ).textContent = `${currentPlayer.name.slice(0, 10)}${
+          currentPlayer.name.length > 10 ? "..." : ""
+        }`;
         document.getElementById("rollDiceButton").style.display = "block";
         const categoryElement = document.querySelector(
           ".category-notification"
         );
         categoryElement.style.opacity = "0";
         const nextPlayerElement = document.querySelector(".nextplayer");
-        nextPlayerElement.textContent = `${currentPlayer.name}'s Turn`;
+        nextPlayerElement.textContent = `${currentPlayer.name.slice(0, 10)}${
+          currentPlayer.name.length > 10 ? "..." : ""
+        } Turn`;
         nextPlayerElement.style.opacity = "1";
         setTimeout(() => {
           nextPlayerElement.style.opacity = "0";
@@ -864,6 +907,7 @@ function createDiceMesh() {
   const outerMesh = new THREE.Mesh(createBoxGeometry(), boxMaterialOuter);
   outerMesh.castShadow = true;
   diceMesh.add(innerMesh, outerMesh);
+  diceMesh.outline = null;
 
   return diceMesh;
 }
@@ -1139,8 +1183,10 @@ function updatePhysics(timestamp) {
 }
 
 let resultsDisplayed = false;
+let sortedDiceIndices = [];
 
 function showDiceResults() {
+  isKeptDiceSelected = false;
   diceStopped = false;
 
   let results;
@@ -1171,52 +1217,37 @@ function showDiceResults() {
     });
   } else {
     // 일반 모드에서는 실제 주사위 값을 사용
-    results = diceMeshes
-      .map((diceMesh) => findTopFace(diceMesh))
-      .map(Number)
-      .sort((a, b) => a - b);
+    results = diceMeshes.map((diceMesh) => findTopFace(diceMesh)).map(Number);
   }
 
   if (!resultsDisplayed) {
-    // const score = judge.scoreBoard(results); // judge 객체 사용
-    // document.getElementById("diceResults").innerText = `총 결과: ${results.join(
-    //   ", "
-    // )}`;
-
-    // const scoreText = Object.entries(score)
-    //   .map(([key, value]) => `${key}: ${value}`)
-    //   .join("\n");
-    // document.getElementById("Results").innerText = `점수 결과\n ${scoreText}`;
-
     resultsDisplayed = true;
   }
-  // document.getElementById("scoreBoard").innerText = `점수: ${JSON.stringify(
-  //   score
-  // )}`;
 
   const keptResults = keptDice
     .map((index) => Number(findTopFace(diceMeshes[index])))
     .sort((a, b) => a - b)
     .join(", ");
-  // document.getElementById(
-  //   "keptDiceResults"
-  // ).innerText = `킵한 주사위: ${keptResults}`;
 
   const remainingDice = diceMeshes.filter(
     (_, index) => !keptDice.includes(index)
   );
 
-  const sortedDice = remainingDice
-    .map((diceMesh, index) => ({
-      diceMesh,
-      diceBody: diceBodies[diceMeshes.indexOf(diceMesh)],
-      topFaceValue: Number(findTopFace(diceMesh)),
-    }))
-    .sort((a, b) => a.topFaceValue - b.topFaceValue);
+  const sortedRemainingDice = remainingDice.slice().sort((a, b) => {
+    const aValue = Number(findTopFace(a));
+    const bValue = Number(findTopFace(b));
+    return aValue - bValue;
+  });
+
+  sortedDiceIndices = sortedRemainingDice.map((diceMesh) =>
+    diceMeshes.indexOf(diceMesh)
+  );
 
   const spacing = 1.3;
-  const startX = (-(sortedDice.length - 1) * spacing) / 2;
-  sortedDice.forEach(({ diceMesh, diceBody, topFaceValue }, index) => {
+  const startX = (-(sortedRemainingDice.length - 1) * spacing) / 2;
+  sortedRemainingDice.forEach((diceMesh, index) => {
+    const diceBody = diceBodies[diceMeshes.indexOf(diceMesh)];
+    const topFaceValue = Number(findTopFace(diceMesh));
     const targetPosition = new THREE.Vector3(startX + index * spacing, 0, 4);
     const targetRotation = getRotationByValue(topFaceValue);
 
@@ -1271,6 +1302,14 @@ function getRotationByValue(value) {
 const keptDice = []; // Array to store kept dice indices
 
 function onDiceClick(event) {
+  diceMeshes.forEach((diceMesh) => {
+    if (diceMesh && diceMesh.children.length > 1) {
+      const outerMesh = diceMesh.children[1];
+      if (outerMesh && outerMesh.material) {
+        outerMesh.material.color.setHex(0xeeeeee); // 기본 색상으로 설정
+      }
+    }
+  });
   const scoreBoard = document.querySelector(".user");
   const scoreBoardWidth = scoreBoard.offsetWidth;
 
@@ -1320,6 +1359,7 @@ function findParentDice(object) {
 }
 
 function positionKeptDice() {
+  rollState = "ready";
   const spacing = 1.4;
   const startX = (-(keptDice.length - 1) * spacing) / 2;
   keptDice.forEach((index, i) => {
@@ -1343,14 +1383,6 @@ function positionKeptDice() {
 
       // Three.js 메쉬의 위치 업데이트
       diceMesh.position.copy(targetPosition);
-
-      // const keptResults = keptDice
-      //   .map((index) => Number(findTopFace(diceMeshes[index])))
-      //   .sort((a, b) => a - b)
-      //   .join(", ");
-      // document.getElementById(
-      //   "keptDiceResults"
-      // ).innerText = `킵한 주사위: ${keptResults}`;
     }
     if (keptDice.length === 5) {
       rollDiceButton.disabled = true; // 버튼 비활성화
@@ -1362,24 +1394,26 @@ function positionKeptDice() {
   });
 
   // 킵하지 않은 주사위 정렬
-  const remainingDice = diceMeshes.filter(
-    (_, index) => !keptDice.includes(index)
-  );
+  const remainingDiceIndices = diceMeshes
+    .map((_, index) => index)
+    .filter((index) => !keptDice.includes(index));
 
-  const sortedRemainingDice = remainingDice
-    .map((diceMesh, index) => ({
-      diceMesh,
-      diceBody: diceBodies[diceMeshes.indexOf(diceMesh)],
-      topFaceValue: Number(findTopFace(diceMesh)),
-    }))
-    .sort((a, b) => a.topFaceValue - b.topFaceValue);
+  // 정렬된 주사위 순서대로 sortedDiceIndices 업데이트
+  sortedDiceIndices = remainingDiceIndices.slice().sort((a, b) => {
+    const aValue = Number(findTopFace(diceMeshes[a]));
+    const bValue = Number(findTopFace(diceMeshes[b]));
+    return aValue - bValue;
+  });
 
   const remainingSpacing = 1.3;
   const remainingStartX =
-    (-(sortedRemainingDice.length - 1) * remainingSpacing) / 2;
-  sortedRemainingDice.forEach(({ diceMesh, diceBody, topFaceValue }, index) => {
+    (-(sortedDiceIndices.length - 1) * remainingSpacing) / 2;
+
+  sortedDiceIndices.forEach((index, i) => {
+    const diceMesh = diceMeshes[index];
+    const diceBody = diceBodies[index];
     const targetPosition = new THREE.Vector3(
-      remainingStartX + index * remainingSpacing,
+      remainingStartX + i * remainingSpacing,
       0,
       4
     );
@@ -1401,6 +1435,119 @@ function positionKeptDice() {
 
 window.addEventListener("click", onDiceClick);
 
+let selectedDiceIndex = 0;
+let isKeptDiceSelected = false;
+
+function handleKeyDown(event) {
+  if (diceStopped && rollCount > 0) {
+    const remainingDiceIndices = sortedDiceIndices.filter(
+      (index) => !keptDice.includes(index)
+    );
+
+    if (event.key === "a" || event.key === "A") {
+      if (isKeptDiceSelected) {
+        selectedDiceIndex = Math.max(0, selectedDiceIndex - 1);
+      } else {
+        const currentIndex = remainingDiceIndices.indexOf(
+          sortedDiceIndices[selectedDiceIndex]
+        );
+        selectedDiceIndex =
+          (currentIndex - 1 + remainingDiceIndices.length) %
+          remainingDiceIndices.length;
+      }
+    } else if (event.key === "d" || event.key === "D") {
+      if (isKeptDiceSelected) {
+        selectedDiceIndex = Math.min(
+          keptDice.length - 1,
+          selectedDiceIndex + 1
+        );
+      } else {
+        const currentIndex = remainingDiceIndices.indexOf(
+          sortedDiceIndices[selectedDiceIndex]
+        );
+        selectedDiceIndex = (currentIndex + 1) % remainingDiceIndices.length;
+      }
+    } else if (event.key === "w" || event.key === "W") {
+      isKeptDiceSelected = true;
+      selectedDiceIndex = Math.min(keptDice.length - 1, selectedDiceIndex);
+      if (keptDice.length > 0) {
+        selectedDiceIndex = 0;
+      }
+    } else if (event.key === "s" || event.key === "S") {
+      isKeptDiceSelected = false;
+      selectedDiceIndex = Math.min(
+        remainingDiceIndices.length - 1,
+        selectedDiceIndex
+      );
+      if (remainingDiceIndices.length > 0) {
+        selectedDiceIndex = 0;
+      }
+    } else if (event.key === "Enter") {
+      if (isKeptDiceSelected) {
+        if (keptDice.length > 0) {
+          const index = keptDice[selectedDiceIndex];
+          const keptIndex = keptDice.indexOf(index);
+          keptDice.splice(keptIndex, 1);
+          selectedDiceIndex = Math.min(selectedDiceIndex, keptDice.length - 1);
+        }
+      } else {
+        if (remainingDiceIndices.length > 0) {
+          const index = remainingDiceIndices[selectedDiceIndex];
+          if (!keptDice.includes(index)) {
+            keptDice.push(index);
+            selectedDiceIndex = Math.min(
+              selectedDiceIndex,
+              remainingDiceIndices.length - 2
+            );
+          }
+        }
+      }
+      positionKeptDice();
+    }
+
+    highlightSelectedDice();
+  }
+}
+
+function highlightSelectedDice() {
+  diceMeshes.forEach((diceMesh) => {
+    if (diceMesh && diceMesh.children.length > 1) {
+      const outerMesh = diceMesh.children[1];
+      if (outerMesh && outerMesh.material) {
+        outerMesh.material.color.setHex(0xeeeeee); // 기본 색상으로 설정
+      }
+    }
+  });
+
+  if (isKeptDiceSelected && keptDice.length > 0) {
+    const selectedKeptDiceIndex = keptDice[selectedDiceIndex];
+    const selectedDiceMesh = diceMeshes[selectedKeptDiceIndex];
+    if (selectedDiceMesh && selectedDiceMesh.children.length > 1) {
+      const outerMesh = selectedDiceMesh.children[1];
+      if (outerMesh && outerMesh.material) {
+        outerMesh.material.color.setHex(0xffff00); // 선택된 주사위 색상 변경
+      }
+    }
+  } else {
+    const remainingDiceIndices = sortedDiceIndices.filter(
+      (index) => !keptDice.includes(index)
+    );
+    if (remainingDiceIndices.length > 0) {
+      const selectedRemainingDiceIndex =
+        remainingDiceIndices[selectedDiceIndex];
+      const selectedDiceMesh = diceMeshes[selectedRemainingDiceIndex];
+      if (selectedDiceMesh && selectedDiceMesh.children.length > 1) {
+        const outerMesh = selectedDiceMesh.children[1];
+        if (outerMesh && outerMesh.material) {
+          outerMesh.material.color.setHex(0xffff00); // 선택된 주사위 색상 변경
+        }
+      }
+    }
+  }
+}
+
+document.addEventListener("keydown", handleKeyDown);
+
 // 버튼 찾기
 const rollDiceButton = document.getElementById("rollDiceButton");
 
@@ -1413,6 +1560,14 @@ function resetAndRollDice() {
   if (diceStopped) {
     if (turnEnded) {
     }
+    diceMeshes.forEach((diceMesh) => {
+      if (diceMesh && diceMesh.children.length > 1) {
+        const outerMesh = diceMesh.children[1];
+        if (outerMesh && outerMesh.material) {
+          outerMesh.material.color.setHex(0xeeeeee); // 기본 색상으로 설정
+        }
+      }
+    });
 
     if (rollCount < 3 && keptDice.length < 5) {
       document.getElementById("remainingRolls").textContent = `${
@@ -1516,10 +1671,12 @@ let lastButtonClick = 0;
 const buttonCooldown = CoolTime; // 쿨타임 (ms)
 // 버튼 클릭 이벤트에 함수 연결
 rollDiceButton.addEventListener("click", function (event) {
-  const currentTime = new Date().getTime();
-  if (currentTime - lastButtonClick > buttonCooldown) {
-    lastButtonClick = currentTime;
-    resetAndRollDice();
+  if (isGameStarted) {
+    const currentTime = new Date().getTime();
+    if (currentTime - lastButtonClick > buttonCooldown) {
+      lastButtonClick = currentTime;
+      resetAndRollDice();
+    }
   }
 });
 
@@ -1528,7 +1685,7 @@ const spacebarCooldown = CoolTime; // 쿨타임 (ms)
 
 // 스페이스바 누르면 주사위 굴리기 버튼 클릭 이벤트 발생
 document.addEventListener("keydown", function (event) {
-  if (event.code === "Space" && diceStopped) {
+  if (isGameStarted && event.code === "Space" && diceStopped) {
     const currentTime = new Date().getTime();
     if (
       currentTime - lastSpacebarPress > spacebarCooldown &&
