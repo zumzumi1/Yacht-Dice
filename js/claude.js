@@ -1444,7 +1444,7 @@ function handleKeyDown(event) {
       (index) => !keptDice.includes(index)
     );
 
-    if (event.key === "a" || event.key === "A") {
+    if (event.key === "a" || event.key === "A" || event.key === "ArrowLeft") {
       if (isKeptDiceSelected) {
         selectedDiceIndex = Math.max(0, selectedDiceIndex - 1);
       } else {
@@ -1453,7 +1453,7 @@ function handleKeyDown(event) {
           selectedDiceIndex = remainingDiceIndices.length - 1;
         }
       }
-    } else if (event.key === "d" || event.key === "D") {
+    } else if (event.key === "d" || event.key === "D" || event.key === "ArrowRight") {
       if (isKeptDiceSelected) {
         selectedDiceIndex = Math.min(
           keptDice.length - 1,
@@ -1465,20 +1465,24 @@ function handleKeyDown(event) {
           selectedDiceIndex + 1
         );
       }
-    } else if (event.key === "w" || event.key === "W") {
-      isKeptDiceSelected = true;
-      selectedDiceIndex = Math.min(keptDice.length - 1, selectedDiceIndex);
-      if (keptDice.length > 0) {
-        selectedDiceIndex = 0;
+    } else if (event.key === "w" || event.key === "W" || event.key === "ArrowUp") {
+      if (keptDice.length !== 0) {
+        isKeptDiceSelected = true;
+        selectedDiceIndex = Math.min(keptDice.length - 1, selectedDiceIndex);
+        if (keptDice.length > 0) {
+          selectedDiceIndex = 0;
+        }
       }
-    } else if (event.key === "s" || event.key === "S") {
-      isKeptDiceSelected = false;
-      selectedDiceIndex = Math.min(
-        remainingDiceIndices.length - 1,
-        selectedDiceIndex
-      );
-      if (remainingDiceIndices.length > 0) {
-        selectedDiceIndex = 0;
+    } else if (event.key === "s" || event.key === "S" || event.key === "ArrowDown") {
+      if (keptDice.length !== 5) {
+        isKeptDiceSelected = false;
+        selectedDiceIndex = Math.min(
+          remainingDiceIndices.length - 1,
+          selectedDiceIndex
+        );
+        if (remainingDiceIndices.length > 0) {
+          selectedDiceIndex = 0;
+        }
       }
     } else if (event.key === "Enter") {
       if (isKeptDiceSelected) {
