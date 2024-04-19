@@ -273,23 +273,22 @@ playWithComputerButton.addEventListener("click", () => {
 });
 
 function startGameWithComputer() {
-  const randomOrder = Math.random() < 0.5;
-  if (randomOrder) {
-    player1.name = "Player";
-    player2.name = "Computer";
-  } else {
-    player1.name = "Computer";
-    player2.name = "Player";
-    renderScoreBoard();
-    resetAndRollDice();
-    setTimeout(() => {
-      computerTurn();
-    }, 1000);
-  }
+  // const randomOrder = Math.random() < 0.5;
+  // if (randomOrder) {
+  //   player1.name = "Player";
+  //   player2.name = "Computer";
+  // } else {
+  //   player1.name = "Computer";
+  //   player2.name = "Player";
+  //   renderScoreBoard();
+  //   resetAndRollDice();
+  //   setTimeout(() => {
+  //     computerTurn();
+  //   }, 1000);
+  // }
 
-  // player1.name = "Computer";
-  // // player2.name = "Computer";
-  // player2.name = "Player";
+  player1.name = "Computer";
+  player2.name = "Computer";
 
   const displayPlayer1Name = player1.name;
   const displayPlayer2Name = player2.name;
@@ -309,22 +308,28 @@ function startGameWithComputer() {
   }, 1200);
 
   isGameStarted = true;
+
+  renderScoreBoard();
+  resetAndRollDice();
+  setTimeout(() => {
+    computerTurn();
+  }, 1000);
 }
 
 async function computerTurn() {
   isComputerTurn = true;
   rollDiceButton.disabled = true;
   if (rollCount < 3 && keptDice.length < 5) {
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 1초 지연
     resetAndRollDice();
     rollDiceButton.disabled = true;
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 1초 지연
     resetAndRollDice();
     rollDiceButton.disabled = true;
     while (!diceStopped) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 1초 지연
     const diceResults = diceMeshes
       .map((diceMesh) => findTopFace(diceMesh))
       .map(Number);
@@ -337,13 +342,13 @@ async function computerTurn() {
       }
     });
     positionKeptDice();
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 1초 지연
     await computerTurn();
   } else {
     while (!diceStopped) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    await new Promise((resolve) => setTimeout(resolve, 500)); // 0.5초 지연
+    await new Promise((resolve) => setTimeout(resolve, 300)); // 0.5초 지연
     const finalDiceResults = diceMeshes
       .map((diceMesh) => findTopFace(diceMesh))
       .map(Number);
@@ -359,101 +364,125 @@ async function computerTurn() {
 }
 
 function selectKeptDice(diceResults, rollCount) {
+  // 이전에 킵한 주사위 인덱스 초기화
+  keptDice.length = 0;
   const counts = {};
-  diceResults.forEach((dice) => {
-    counts[dice] = counts[dice] ? counts[dice] + 1 : 1;
-  });
-
-  // console.log(rollCount);
-
   const keptDiceIndices = [];
 
-  // Large Straight, Small Straight 확인
-  const uniqueDices = [...new Set(diceResults)];
-  const sortedDices = uniqueDices.sort((a, b) => a - b);
-  if (
-    (sortedDices.length >= 4 && sortedDices[3] - sortedDices[0] === 3) ||
-    (sortedDices.length >= 5 &&
-      ((sortedDices.includes(1) &&
-        sortedDices.includes(2) &&
-        sortedDices.includes(3) &&
-        sortedDices.includes(4)) ||
-        (sortedDices.includes(2) &&
-          sortedDices.includes(3) &&
-          sortedDices.includes(4) &&
-          sortedDices.includes(5)) ||
-        (sortedDices.includes(3) &&
-          sortedDices.includes(4) &&
-          sortedDices.includes(5) &&
-          sortedDices.includes(6))))
-  ) {
-    if (
-      currentPlayer.scores["L. Straight"] === undefined ||
-      currentPlayer.scores["S. Straight"] === undefined
-    ) {
-      if (rollCount < 3 && currentPlayer.scores["L. Straight"] === undefined) {
-        // 기회가 2번 이상 남은 경우 L.Straight도 노림
-        sortedDices.forEach((dice) => {
-          const index = diceResults.indexOf(dice);
-          if (index !== -1) {
-            keptDiceIndices.push(index);
-          }
-        });
-      } else if (currentPlayer.scores["S. Straight"] === undefined) {
-        // S.Straight만 노림
-        sortedDices.slice(0, 4).forEach((dice) => {
-          const index = diceResults.indexOf(dice);
-          if (index !== -1) {
-            keptDiceIndices.push(index);
-          }
-        });
-      }
-    }
+  // 각 주사위 값의 개수를 세어 counts 객체에 저장
+  for (const dice of diceResults) {
+    counts[dice] = (counts[dice] || 0) + 1;
   }
 
-  // 같은 주사위가 2개 이상 나온 경우 해당 주사위들을 킵
-  const pairCounts = {};
-  Object.entries(counts).forEach(([diceValue, count]) => {
-    if (count >= 2 && currentPlayer.scores[`${diceValue}s`] === undefined) {
-      pairCounts[diceValue] = count;
-    }
-  });
-
-  if (Object.keys(pairCounts).length > 1 && pairCounts[1]) {
-    delete pairCounts[1];
-  }
-
-  Object.entries(pairCounts).forEach(([diceValue, count]) => {
-    diceResults.forEach((dice, index) => {
-      if (dice === parseInt(diceValue)) {
-        keptDiceIndices.push(index);
+  // 우선순위 2: 주사위가 4개 이상 연속적이라면 해당 주사위를 킵
+  const uniqueDice = [...new Set(diceResults)];
+  const consecutiveDice = [];
+  if (currentPlayer.scores[("S. Straight", "L. Straight")] !== undefined) {
+    for (let i = 0; i < uniqueDice.length; i++) {
+      if (
+        uniqueDice[i + 1] &&
+        uniqueDice[i + 1] - uniqueDice[i] === 1 &&
+        uniqueDice[i + 2] &&
+        uniqueDice[i + 2] - uniqueDice[i + 1] === 1 &&
+        uniqueDice[i + 3] &&
+        uniqueDice[i + 3] - uniqueDice[i + 2] === 1
+      ) {
+        consecutiveDice.push(
+          uniqueDice[i],
+          uniqueDice[i + 1],
+          uniqueDice[i + 2],
+          uniqueDice[i + 3]
+        );
+        break;
       }
-    });
-  });
+    }
 
-  // Yacht, 4 of a Kind 확인
-  Object.entries(counts).forEach(([diceValue, count]) => {
-    if (count >= 4) {
-      diceResults.forEach((dice, index) => {
-        if (dice === parseInt(diceValue)) {
-          keptDiceIndices.push(index);
+    if (consecutiveDice.length >= 4) {
+      keptDiceIndices.length = 0; // 이전에 킵한 주사위 인덱스 초기화
+      const keptDice = new Set();
+      for (let i = 0; i < diceResults.length; i++) {
+        if (
+          consecutiveDice.includes(diceResults[i]) &&
+          !keptDice.has(diceResults[i])
+        ) {
+          keptDiceIndices.push(i);
+          keptDice.add(diceResults[i]);
         }
-      });
+      }
     }
-  });
-
-  // Full House 확인
-  if (
-    Object.values(counts).includes(3) &&
-    Object.values(counts).includes(2) &&
-    currentPlayer.scores["Full House"] === undefined
-  ) {
-    diceResults.forEach((dice, index) => {
-      keptDiceIndices.push(index);
-    });
   }
 
-  return [...new Set(keptDiceIndices)];
+  // 우선순위 1: 같은 값의 주사위가 있다면 해당 주사위를 모두 킵
+  const duplicates = Object.entries(counts)
+    .filter(([_, count]) => count > 1)
+    .sort(([a, countA], [b, countB]) => {
+      if (countA !== countB) {
+        return countB - countA;
+        // 개수가 많은 것부터 우선 킵
+      }
+      return b - a;
+      // 개수가 같다면 값이 큰 것부터 우선 킵
+    });
+
+  if (duplicates.length > 0) {
+    const [value, count] = duplicates[0];
+    for (let i = 0; i < diceResults.length; i++) {
+      if (diceResults[i] === Number(value)) {
+        keptDiceIndices.push(i);
+      }
+    }
+
+    const upperSectionCategories = [
+      "Aces",
+      "Deuces",
+      "Threes",
+      "Fours",
+      "Fives",
+      "Sixes",
+    ];
+
+    for (const category of upperSectionCategories) {
+      const hasSelectedCategory = currentPlayer.scores[category] !== undefined;
+      const correspondingValue = upperSectionCategories.indexOf(category) + 1;
+
+      if (
+        !hasSelectedCategory &&
+        value === String(correspondingValue) &&
+        count >= 3
+      ) {
+        return keptDiceIndices;
+      }
+
+      if (hasSelectedCategory && duplicates.length > 1) {
+        const [nextValue, nextCount] = duplicates[1];
+        keptDiceIndices.length = 0; // 이전에 킵한 주사위 인덱스 초기화
+        for (let i = 0; i < diceResults.length; i++) {
+          if (diceResults[i] === Number(nextValue)) {
+            keptDiceIndices.push(i);
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  // 우선순위 3: 이미 4 of a kind는 선택했었고, Full house는 선택한 적이 없는 경우 Full house 조건에 맞게 킵
+  const hasSelected4OfAKind = currentPlayer.scores["4 of a Kind"] !== undefined;
+  const hasSelectedFullHouse = currentPlayer.scores["Full House"] !== undefined;
+
+  if (hasSelected4OfAKind && !hasSelectedFullHouse) {
+    const fullHouseCondition = Object.values(counts).includes(3);
+    if (fullHouseCondition) {
+      keptDiceIndices.length = 0; // 이전에 킵한 주사위 인덱스 초기화
+      for (let i = 0; i < diceResults.length; i++) {
+        if (counts[diceResults[i]] >= 2) {
+          keptDiceIndices.push(i);
+        }
+      }
+    }
+  }
+
+  return keptDiceIndices;
 }
 
 function selectCategory(diceResults) {
@@ -471,7 +500,7 @@ function selectCategory(diceResults) {
   if (scores["Fives"] > 15 && currentPlayer.scores["Fives"] === undefined) {
     return "Fives";
   }
-  
+
   // 4 of a Kind 확인
   if (
     scores["4 of a Kind"] > 0 &&
@@ -479,7 +508,6 @@ function selectCategory(diceResults) {
   ) {
     return "4 of a Kind";
   }
-
   // Full House 확인
   if (
     scores["Full House"] > 0 &&
