@@ -256,6 +256,291 @@ class ParticleSystem {
   }
 }
 
+const mainScreen = document.getElementById("mainScreen");
+const playWithFriendButton = document.getElementById("playWithFriendButton");
+const playWithComputerButton = document.getElementById(
+  "playWithComputerButton"
+);
+
+playWithFriendButton.addEventListener("click", () => {
+  mainScreen.style.display = "none";
+  playerNameForm.style.display = "block";
+});
+
+playWithComputerButton.addEventListener("click", () => {
+  mainScreen.style.display = "none";
+  startGameWithComputer();
+});
+
+function startGameWithComputer() {
+  const randomOrder = Math.random() < 0.5;
+  if (randomOrder) {
+    player1.name = "Player";
+    player2.name = "Computer";
+  } else {
+    player1.name = "Computer";
+    player2.name = "Player";
+    renderScoreBoard();
+    resetAndRollDice();
+    setTimeout(() => {
+      computerTurn();
+    }, 1000);
+  }
+
+  // player1.name = "Computer";
+  // // player2.name = "Computer";
+  // player2.name = "Player";
+
+  const displayPlayer1Name = player1.name;
+  const displayPlayer2Name = player2.name;
+
+  document.querySelector(".player1").textContent = displayPlayer1Name;
+  document.querySelector(".player2").textContent = displayPlayer2Name;
+  document.getElementById(
+    "currentPlayer"
+  ).textContent = `${currentPlayer.name}`;
+  const nextPlayerElement = document.querySelector(".nextplayer");
+  nextPlayerElement.textContent = `${currentPlayer.name.slice(0, 10)}${
+    currentPlayer.name.length > 10 ? "..." : ""
+  } Turn`;
+  nextPlayerElement.style.opacity = "1";
+  setTimeout(() => {
+    nextPlayerElement.style.opacity = "0";
+  }, 1200);
+
+  isGameStarted = true;
+}
+
+async function computerTurn() {
+  isComputerTurn = true;
+  rollDiceButton.disabled = true;
+  if (rollCount < 3 && keptDice.length < 5) {
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    resetAndRollDice();
+    rollDiceButton.disabled = true;
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    resetAndRollDice();
+    rollDiceButton.disabled = true;
+    while (!diceStopped) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    const diceResults = diceMeshes
+      .map((diceMesh) => findTopFace(diceMesh))
+      .map(Number);
+
+    // 주사위 결과를 분석하여 킵할 주사위 선택
+    const keptDiceIndices = selectKeptDice(diceResults, rollCount);
+    keptDiceIndices.forEach((index) => {
+      if (!keptDice.includes(index)) {
+        keptDice.push(index);
+      }
+    });
+    positionKeptDice();
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    await computerTurn();
+  } else {
+    while (!diceStopped) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 0.5초 지연
+    const finalDiceResults = diceMeshes
+      .map((diceMesh) => findTopFace(diceMesh))
+      .map(Number);
+
+    // 최종 주사위 결과를 분석하여 점수 선택
+    const category = selectCategory(finalDiceResults);
+    const score = judge.scoreBoard(finalDiceResults)[category];
+
+    // console.log(category, score);
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 1.5초 지연
+    selectScore(category, score);
+  }
+}
+
+function selectKeptDice(diceResults, rollCount) {
+  const counts = {};
+  diceResults.forEach((dice) => {
+    counts[dice] = counts[dice] ? counts[dice] + 1 : 1;
+  });
+
+  // console.log(rollCount);
+
+  const keptDiceIndices = [];
+
+  // Large Straight, Small Straight 확인
+  const uniqueDices = [...new Set(diceResults)];
+  const sortedDices = uniqueDices.sort((a, b) => a - b);
+  if (
+    (sortedDices.length >= 4 && sortedDices[3] - sortedDices[0] === 3) ||
+    (sortedDices.length >= 5 &&
+      ((sortedDices.includes(1) &&
+        sortedDices.includes(2) &&
+        sortedDices.includes(3) &&
+        sortedDices.includes(4)) ||
+        (sortedDices.includes(2) &&
+          sortedDices.includes(3) &&
+          sortedDices.includes(4) &&
+          sortedDices.includes(5)) ||
+        (sortedDices.includes(3) &&
+          sortedDices.includes(4) &&
+          sortedDices.includes(5) &&
+          sortedDices.includes(6))))
+  ) {
+    if (
+      currentPlayer.scores["L. Straight"] === undefined ||
+      currentPlayer.scores["S. Straight"] === undefined
+    ) {
+      if (rollCount < 3 && currentPlayer.scores["L. Straight"] === undefined) {
+        // 기회가 2번 이상 남은 경우 L.Straight도 노림
+        sortedDices.forEach((dice) => {
+          const index = diceResults.indexOf(dice);
+          if (index !== -1) {
+            keptDiceIndices.push(index);
+          }
+        });
+      } else if (currentPlayer.scores["S. Straight"] === undefined) {
+        // S.Straight만 노림
+        sortedDices.slice(0, 4).forEach((dice) => {
+          const index = diceResults.indexOf(dice);
+          if (index !== -1) {
+            keptDiceIndices.push(index);
+          }
+        });
+      }
+    }
+  }
+
+  // 같은 주사위가 2개 이상 나온 경우 해당 주사위들을 킵
+  const pairCounts = {};
+  Object.entries(counts).forEach(([diceValue, count]) => {
+    if (count >= 2 && currentPlayer.scores[`${diceValue}s`] === undefined) {
+      pairCounts[diceValue] = count;
+    }
+  });
+
+  if (Object.keys(pairCounts).length > 1 && pairCounts[1]) {
+    delete pairCounts[1];
+  }
+
+  Object.entries(pairCounts).forEach(([diceValue, count]) => {
+    diceResults.forEach((dice, index) => {
+      if (dice === parseInt(diceValue)) {
+        keptDiceIndices.push(index);
+      }
+    });
+  });
+
+  // Yacht, 4 of a Kind 확인
+  Object.entries(counts).forEach(([diceValue, count]) => {
+    if (count >= 4) {
+      diceResults.forEach((dice, index) => {
+        if (dice === parseInt(diceValue)) {
+          keptDiceIndices.push(index);
+        }
+      });
+    }
+  });
+
+  // Full House 확인
+  if (
+    Object.values(counts).includes(3) &&
+    Object.values(counts).includes(2) &&
+    currentPlayer.scores["Full House"] === undefined
+  ) {
+    diceResults.forEach((dice, index) => {
+      keptDiceIndices.push(index);
+    });
+  }
+
+  return [...new Set(keptDiceIndices)];
+}
+
+function selectCategory(diceResults) {
+  const scores = judge.scoreBoard(diceResults);
+
+  // Yacht 확인
+  if (scores["Yacht"] === 50 && currentPlayer.scores["Yacht"] === undefined) {
+    return "Yacht";
+  }
+
+  if (scores["Sixes"] > 18 && currentPlayer.scores["Sixes"] === undefined) {
+    return "Sixes";
+  }
+
+  // 4 of a Kind 확인
+  if (scores["4 of a Kind"] > 0) {
+    const diceValue = diceResults[0];
+    if (currentPlayer.scores[`${diceValue}s`] === undefined) {
+      return `${diceValue}s`;
+    } else if (currentPlayer.scores["4 of a Kind"] === undefined) {
+      return "4 of a Kind";
+    }
+  }
+
+  // Full House 확인
+  if (
+    scores["Full House"] > 0 &&
+    currentPlayer.scores["Full House"] === undefined &&
+    scores["Full House"] >= 12
+  ) {
+    return "Full House";
+  }
+
+  // Large Straight 확인
+  if (
+    scores["L. Straight"] === 30 &&
+    currentPlayer.scores["L. Straight"] === undefined
+  ) {
+    return "L. Straight";
+  }
+
+  // Small Straight 확인
+  if (
+    scores["S. Straight"] === 15 &&
+    currentPlayer.scores["S. Straight"] === undefined
+  ) {
+    return "S. Straight";
+  }
+
+  if (scores["Deuces"] > 2 && currentPlayer.scores["Deuces"] === undefined) {
+    return "Deuces";
+  }
+
+  if (scores["Threes"] > 3 && currentPlayer.scores["Threes"] === undefined) {
+    return "Threes";
+  }
+
+  if (scores["Fours"] > 8 && currentPlayer.scores["Fours"] === undefined) {
+    return "Fours";
+  }
+
+  if (scores["Fives"] > 10 && currentPlayer.scores["Fives"] === undefined) {
+    return "Fives";
+  }
+
+  if (scores["Sixes"] > 12 && currentPlayer.scores["Sixes"] === undefined) {
+    return "Sixes";
+  }
+
+  // Aces 확인
+  if (currentPlayer.scores["Aces"] === undefined) {
+    return "Aces";
+  }
+
+  // Choice 확인
+  if (currentPlayer.scores["Choice"] === undefined) {
+    return "Choice";
+  }
+
+  // 빈 카테고리에 점수 기록
+  for (const category in scores) {
+    if (currentPlayer.scores[category] === undefined) {
+      return category;
+    }
+  }
+}
+
 let isGameStarted = false;
 
 const playerNameForm = document.getElementById("playerNameForm");
@@ -366,9 +651,11 @@ function renderScoreBoard() {
       if (currentPlayer === player1 && rollState === "ready") {
         player1ScoreCell.textContent = score;
         player1ScoreCell.classList.add("selectable");
-        player1ScoreCell.addEventListener("click", () => {
-          selectScore(category, score);
-        });
+        if (!isComputerTurn) {
+          player1ScoreCell.addEventListener("click", () => {
+            selectScore(category, score);
+          });
+        }
       } else {
         player1ScoreCell.textContent = "";
       }
@@ -396,9 +683,11 @@ function renderScoreBoard() {
       if (currentPlayer === player2 && rollState === "ready") {
         player2ScoreCell.textContent = score;
         player2ScoreCell.classList.add("selectable");
-        player2ScoreCell.addEventListener("click", () =>
-          selectScore(category, score)
-        );
+        if (!isComputerTurn) {
+          player2ScoreCell.addEventListener("click", () => {
+            selectScore(category, score);
+          });
+        }
       } else {
         player2ScoreCell.textContent = "";
       }
@@ -519,9 +808,11 @@ function renderScoreBoard() {
       if (currentPlayer === player1 && rollState === "ready") {
         player1ScoreCell.textContent = score;
         player1ScoreCell.classList.add("selectable");
-        player1ScoreCell.addEventListener("click", () =>
-          selectScore(category, score)
-        );
+        if (!isComputerTurn) {
+          player1ScoreCell.addEventListener("click", () => {
+            selectScore(category, score);
+          });
+        }
       } else {
         player1ScoreCell.textContent = "";
       }
@@ -549,9 +840,11 @@ function renderScoreBoard() {
       if (currentPlayer === player2 && rollState === "ready") {
         player2ScoreCell.textContent = score;
         player2ScoreCell.classList.add("selectable");
-        player2ScoreCell.addEventListener("click", () =>
-          selectScore(category, score)
-        );
+        if (!isComputerTurn) {
+          player2ScoreCell.addEventListener("click", () => {
+            selectScore(category, score);
+          });
+        }
       } else {
         player2ScoreCell.textContent = "";
       }
@@ -656,6 +949,8 @@ function renderScoreBoard() {
 let IsGameover = false;
 let lastClickedScore = null;
 let lastScoreClickTime = 0;
+let isComputerTurn = false;
+
 // 점수 선택 함수 수정
 function selectScore(category, score) {
   if (diceStopped) {
@@ -666,13 +961,9 @@ function selectScore(category, score) {
     document.getElementById("rollDiceButton").style.display = "none";
     currentPlayer = currentPlayer === player1 ? player2 : player1;
     turnEnded = true;
-    // document.getElementById("diceResults").innerText = `총 결과: `;
-    // document.getElementById("keptDiceResults").innerText = `킵한 주사위: `;
-
     keptDice.length = 0;
     renderScoreBoard();
     checkGameOver();
-
     document.getElementById("remainingRolls").textContent = `${0} Left`;
 
     if (!IsGameover) {
@@ -699,6 +990,12 @@ function selectScore(category, score) {
         }, 1200);
         rollState = "ready";
         resetAndRollDice();
+        if (currentPlayer.name === "Computer") {
+          isComputerTurn = true;
+          computerTurn();
+        } else {
+          isComputerTurn = false;
+        }
       }, 1000); // 1초(1000ms) 후에 resetAndRollDice 함수 호출
     }
   }
@@ -1280,7 +1577,11 @@ function showDiceResults() {
   if (rollCount >= 3) {
     document.getElementById("rollDiceButton").style.display = "none";
   } else {
-    document.getElementById("rollDiceButton").style.display = "block";
+    if (isComputerTurn) {
+      document.getElementById("rollDiceButton").style.display = "none";
+    } else {
+      document.getElementById("rollDiceButton").style.display = "block";
+    }
   }
   renderScoreBoard();
   diceStopped = true;
@@ -1302,49 +1603,51 @@ function getRotationByValue(value) {
 const keptDice = []; // Array to store kept dice indices
 
 function onDiceClick(event) {
-  diceMeshes.forEach((diceMesh) => {
-    if (diceMesh && diceMesh.children.length > 1) {
-      const outerMesh = diceMesh.children[1];
-      if (outerMesh && outerMesh.material) {
-        outerMesh.material.color.setHex(0xeeeeee); // 기본 색상으로 설정
+  if (!isComputerTurn) {
+    diceMeshes.forEach((diceMesh) => {
+      if (diceMesh && diceMesh.children.length > 1) {
+        const outerMesh = diceMesh.children[1];
+        if (outerMesh && outerMesh.material) {
+          outerMesh.material.color.setHex(0xeeeeee); // 기본 색상으로 설정
+        }
       }
-    }
-  });
-  const scoreBoard = document.querySelector(".user");
-  const scoreBoardWidth = scoreBoard.offsetWidth;
+    });
+    const scoreBoard = document.querySelector(".user");
+    const scoreBoardWidth = scoreBoard.offsetWidth;
 
-  const canvasRect = renderer.domElement.getBoundingClientRect();
-  const mouse = new THREE.Vector2(
-    ((event.clientX - canvasRect.left) / canvasRect.width) * 2 - 1,
-    -((event.clientY - canvasRect.top) / canvasRect.height) * 2 + 1
-  );
+    const canvasRect = renderer.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+      ((event.clientX - canvasRect.left) / canvasRect.width) * 2 - 1,
+      -((event.clientY - canvasRect.top) / canvasRect.height) * 2 + 1
+    );
 
-  const raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera(mouse, camera);
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
 
-  const intersects = raycaster.intersectObjects(scene.children, true);
-  if (intersects.length > 0) {
-    const clickedObject = intersects[0].object;
-    const clickedDice = findParentDice(clickedObject);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    if (intersects.length > 0) {
+      const clickedObject = intersects[0].object;
+      const clickedDice = findParentDice(clickedObject);
 
-    if (clickedDice && diceStopped && rollCount > 0) {
-      const index = diceMeshes.indexOf(clickedDice);
-      const keptIndex = keptDice.indexOf(index);
+      if (clickedDice && diceStopped && rollCount > 0) {
+        const index = diceMeshes.indexOf(clickedDice);
+        const keptIndex = keptDice.indexOf(index);
 
-      rollState = "ready";
-      rollDiceButton.innerText = "Roll ready";
-      const keptResults = keptDice
-        .map((index) => Number(findTopFace(diceMeshes[index])))
-        .sort((a, b) => a - b)
-        .join(", ");
+        rollState = "ready";
+        rollDiceButton.innerText = "Roll ready";
+        const keptResults = keptDice
+          .map((index) => Number(findTopFace(diceMeshes[index])))
+          .sort((a, b) => a - b)
+          .join(", ");
 
-      if (keptIndex !== -1) {
-        // 킵된 주사위를 다시 누르면 킵 해제
-        keptDice.splice(keptIndex, 1);
-      } else if (!keptDice.includes(index)) {
-        keptDice.push(index);
+        if (keptIndex !== -1) {
+          // 킵된 주사위를 다시 누르면 킵 해제
+          keptDice.splice(keptIndex, 1);
+        } else if (!keptDice.includes(index)) {
+          keptDice.push(index);
+        }
+        positionKeptDice();
       }
-      positionKeptDice();
     }
   }
 }
@@ -1456,7 +1759,7 @@ const categories = [
 ];
 
 function handleKeyDown(event) {
-  if (diceStopped && rollCount > 0) {
+  if (diceStopped && rollCount > 0 && !isComputerTurn) {
     const remainingDiceIndices = sortedDiceIndices.filter(
       (index) => !keptDice.includes(index)
     );
@@ -1465,7 +1768,7 @@ function handleKeyDown(event) {
       if (isKeptDiceSelected) {
         selectedDiceIndex = Math.max(0, selectedDiceIndex - 1);
       } else if (isCategorySelected) {
-        selectedCategoryIndex = Math.max(0, selectedCategoryIndex - 1);
+        selectedCategoryIndex = Math.max(0, selectedCategoryIndex - 0);
         highlightSelectedCategory();
       } else {
         selectedDiceIndex = Math.max(-1, selectedDiceIndex - 1);
@@ -1792,7 +2095,7 @@ let lastButtonClick = 0;
 const buttonCooldown = CoolTime; // 쿨타임 (ms)
 // 버튼 클릭 이벤트에 함수 연결
 rollDiceButton.addEventListener("click", function (event) {
-  if (isGameStarted) {
+  if (isGameStarted && !isComputerTurn) {
     const currentTime = new Date().getTime();
     if (currentTime - lastButtonClick > buttonCooldown) {
       lastButtonClick = currentTime;
@@ -1806,7 +2109,12 @@ const spacebarCooldown = CoolTime; // 쿨타임 (ms)
 
 // 스페이스바 누르면 주사위 굴리기 버튼 클릭 이벤트 발생
 document.addEventListener("keydown", function (event) {
-  if (isGameStarted && event.code === "Space" && diceStopped) {
+  if (
+    isGameStarted &&
+    event.code === "Space" &&
+    diceStopped &&
+    !isComputerTurn
+  ) {
     const currentTime = new Date().getTime();
     if (
       currentTime - lastSpacebarPress > spacebarCooldown &&

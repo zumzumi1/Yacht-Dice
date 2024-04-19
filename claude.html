@@ -20,6 +20,11 @@
     onselectstart="return false"
     ondragstart="return false">
     <script src="js/claude.js" type="module" defer></script>
+    <div id="mainScreen">
+      <h1>Yacht Dice!</h1>
+      <button id="playWithFriendButton">Play with Friends</button>
+      <button id="playWithComputerButton">Play with Computer</button>
+    </div>
     <div id="playerNameForm" class="hidden">
       <h2>Player Name</h2>
       <div class="input-container">
@@ -28,7 +33,8 @@
           id="player1Name"
           placeholder="Player 1"
           required
-          autocomplete="off" autofocus />
+          autocomplete="off"
+          autofocus />
         <input
           type="text"
           id="player2Name"
@@ -128,7 +134,39 @@
       min-width: calc(100% - 200px);
     }
 
+    #mainScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+    }
+
+    #mainScreen h1 {
+      font-size: 4rem;
+      margin-bottom: 2rem;
+    }
+
+    #mainScreen button {
+      font-size: 2rem;
+      padding: 1rem 2rem;
+      margin: 1rem;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+
     #playerNameForm {
+      display: none;
       position: absolute;
       top: 50%;
       left: 50%;
