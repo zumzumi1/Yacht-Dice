@@ -469,13 +469,11 @@ function selectCategory(diceResults) {
   }
 
   // 4 of a Kind 확인
-  if (scores["4 of a Kind"] > 0) {
-    const diceValue = diceResults[0];
-    if (currentPlayer.scores[`${diceValue}s`] === undefined) {
-      return `${diceValue}s`;
-    } else if (currentPlayer.scores["4 of a Kind"] === undefined) {
-      return "4 of a Kind";
-    }
+  if (
+    scores["4 of a Kind"] > 0 &&
+    currentPlayer.scores["4 of a Kind"] === undefined
+  ) {
+    return "4 of a Kind";
   }
 
   // Full House 확인
