@@ -468,6 +468,10 @@ function selectCategory(diceResults) {
     return "Sixes";
   }
 
+  if (scores["Fives"] > 15 && currentPlayer.scores["Fives"] === undefined) {
+    return "Fives";
+  }
+  
   // 4 of a Kind 확인
   if (
     scores["4 of a Kind"] > 0 &&
