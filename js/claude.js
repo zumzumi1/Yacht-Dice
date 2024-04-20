@@ -364,119 +364,349 @@ async function computerTurn() {
 }
 
 function selectKeptDice(diceResults, rollCount) {
-  // 이전에 킵한 주사위 인덱스 초기화
-  keptDice.length = 0;
-  const counts = {};
   const keptDiceIndices = [];
+  const scores = judge.scoreBoard(diceResults);
 
-  // 각 주사위 값의 개수를 세어 counts 객체에 저장
-  for (const dice of diceResults) {
-    counts[dice] = (counts[dice] || 0) + 1;
-  }
-
-  // 우선순위 2: 주사위가 4개 이상 연속적이라면 해당 주사위를 킵
-  const uniqueDice = [...new Set(diceResults)];
-  const consecutiveDice = [];
-  if (currentPlayer.scores[("S. Straight", "L. Straight")] !== undefined) {
-    for (let i = 0; i < uniqueDice.length; i++) {
-      if (
-        uniqueDice[i + 1] &&
-        uniqueDice[i + 1] - uniqueDice[i] === 1 &&
-        uniqueDice[i + 2] &&
-        uniqueDice[i + 2] - uniqueDice[i + 1] === 1 &&
-        uniqueDice[i + 3] &&
-        uniqueDice[i + 3] - uniqueDice[i + 2] === 1
-      ) {
-        consecutiveDice.push(
-          uniqueDice[i],
-          uniqueDice[i + 1],
-          uniqueDice[i + 2],
-          uniqueDice[i + 3]
-        );
-        break;
-      }
+  // 기존에 킵한 주사위가 있는 경우, 해당 주사위는 계속 킵하도록 설정
+  for (let i = 0; i < diceResults.length; i++) {
+    if (keptDice.includes(i)) {
+      keptDiceIndices.push(i);
     }
+  }
+  // 첫 번째 굴림에서는 높은 숫자의 주사위를 킵
+  if (rollCount === 1) {
+    if (
+      currentPlayer.scores["Aces"] !== undefined &&
+      currentPlayer.scores["Choice"] !== undefined
+    ) {
+      const counts = {};
+      for (let i = 0; i < diceResults.length; i++) {
+        counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
+      }
 
-    if (consecutiveDice.length >= 4) {
-      keptDiceIndices.length = 0; // 이전에 킵한 주사위 인덱스 초기화
-      const keptDice = new Set();
+      const upperSectionNumbers = [
+        "Aces",
+        "Deuces",
+        "Threes",
+        "Fours",
+        "Fives",
+        "Sixes",
+      ];
+      const availableNumbers = upperSectionNumbers.filter(
+        (number) => currentPlayer.scores[number] === undefined
+      );
+
+      const availableCounts = {};
+      for (const number of availableNumbers) {
+        const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
+        availableCounts[number] = count;
+      }
+
+      const maxCount = Math.max(...Object.values(availableCounts));
+      const maxCountNumber = Object.keys(availableCounts).find(
+        (key) => availableCounts[key] === maxCount
+      );
+
       for (let i = 0; i < diceResults.length; i++) {
         if (
-          consecutiveDice.includes(diceResults[i]) &&
-          !keptDice.has(diceResults[i])
+          upperSectionNumbers[diceResults[i] - 1] === maxCountNumber &&
+          !keptDiceIndices.includes(i)
         ) {
           keptDiceIndices.push(i);
-          keptDice.add(diceResults[i]);
         }
       }
-    }
-  }
+    } else {
+      const upperSectionNumbers = [
+        "Aces",
+        "Deuces",
+        "Threes",
+        "Fours",
+        "Fives",
+        "Sixes",
+      ];
+      const availableUpperSectionNumbers = upperSectionNumbers.filter(
+        (number) => currentPlayer.scores[number] === undefined
+      );
 
-  // 우선순위 1: 같은 값의 주사위가 있다면 해당 주사위를 모두 킵
-  const duplicates = Object.entries(counts)
-    .filter(([_, count]) => count > 1)
-    .sort(([a, countA], [b, countB]) => {
-      if (countA !== countB) {
-        return countB - countA;
-        // 개수가 많은 것부터 우선 킵
-      }
-      return b - a;
-      // 개수가 같다면 값이 큰 것부터 우선 킵
-    });
-
-  if (duplicates.length > 0) {
-    const [value, count] = duplicates[0];
-    for (let i = 0; i < diceResults.length; i++) {
-      if (diceResults[i] === Number(value)) {
-        keptDiceIndices.push(i);
-      }
-    }
-
-    const upperSectionCategories = [
-      "Aces",
-      "Deuces",
-      "Threes",
-      "Fours",
-      "Fives",
-      "Sixes",
-    ];
-
-    for (const category of upperSectionCategories) {
-      const hasSelectedCategory = currentPlayer.scores[category] !== undefined;
-      const correspondingValue = upperSectionCategories.indexOf(category) + 1;
-
-      if (
-        !hasSelectedCategory &&
-        value === String(correspondingValue) &&
-        count >= 3
-      ) {
-        return keptDiceIndices;
+      const counts = {};
+      for (let i = 0; i < diceResults.length; i++) {
+        counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
       }
 
-      if (hasSelectedCategory && duplicates.length > 1) {
-        const [nextValue, nextCount] = duplicates[1];
-        keptDiceIndices.length = 0; // 이전에 킵한 주사위 인덱스 초기화
+      const pairs = Object.entries(counts)
+        .filter(([key, value]) => value >= 2)
+        .sort((a, b) => b[0] - a[0]);
+
+      if (pairs.length > 0) {
+        for (const [number, count] of pairs) {
+          const upperSectionNumber = upperSectionNumbers[number - 1];
+
+          if (availableUpperSectionNumbers.includes(upperSectionNumber)) {
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                diceResults[i] === Number(number) &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+            break;
+          } else if (
+            currentPlayer.scores["Full House"] === undefined &&
+            pairs.length > 1
+          ) {
+            const pairNumbers = pairs.map(([number]) => Number(number));
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                pairNumbers.includes(diceResults[i]) &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+            break;
+          } else if (
+            (currentPlayer.scores["Yacht"] === undefined ||
+              currentPlayer.scores["4 of a Kind"] === undefined) &&
+            count >= 4
+          ) {
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                diceResults[i] === Number(number) &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+            break;
+          }
+        }
+      } else {
+        const allDifferent = Object.values(counts).every(
+          (count) => count === 1
+        );
+
+        if (allDifferent) {
+          const availableCounts = {};
+          for (const number of availableUpperSectionNumbers) {
+            const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
+            availableCounts[number] = count;
+          }
+
+          const maxNumber = Math.max(...Object.keys(availableCounts));
+          const maxNumberIndex = diceResults.indexOf(maxNumber);
+
+          if (
+            maxNumberIndex !== -1 &&
+            !keptDiceIndices.includes(maxNumberIndex)
+          ) {
+            keptDiceIndices.push(maxNumberIndex);
+          }
+        } else {
+          const availableCounts = {};
+          for (const number of availableUpperSectionNumbers) {
+            const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
+            availableCounts[number] = count;
+          }
+
+          const maxCount = Math.max(...Object.values(availableCounts));
+          const maxCountNumbers = Object.keys(availableCounts)
+            .filter((key) => availableCounts[key] === maxCount)
+            .sort(
+              (a, b) =>
+                upperSectionNumbers.indexOf(b) - upperSectionNumbers.indexOf(a)
+            );
+
+          for (let i = 0; i < diceResults.length; i++) {
+            if (
+              maxCountNumbers.includes(
+                upperSectionNumbers[diceResults[i] - 1]
+              ) &&
+              !keptDiceIndices.includes(i)
+            ) {
+              keptDiceIndices.push(i);
+            }
+          }
+        }
+      }
+
+      if (keptDiceIndices.length === 0) {
+        const availableCounts = {};
+        for (const number of availableUpperSectionNumbers) {
+          const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
+          availableCounts[number] = count;
+        }
+
+        const maxCount = Math.max(...Object.values(availableCounts));
+        const maxCountNumbers = Object.keys(availableCounts)
+          .filter((key) => availableCounts[key] === maxCount)
+          .sort(
+            (a, b) =>
+              upperSectionNumbers.indexOf(b) - upperSectionNumbers.indexOf(a)
+          );
+
         for (let i = 0; i < diceResults.length; i++) {
-          if (diceResults[i] === Number(nextValue)) {
+          if (
+            maxCountNumbers.includes(upperSectionNumbers[diceResults[i] - 1]) &&
+            !keptDiceIndices.includes(i)
+          ) {
             keptDiceIndices.push(i);
           }
         }
-        break;
       }
     }
   }
 
-  // 우선순위 3: 이미 4 of a kind는 선택했었고, Full house는 선택한 적이 없는 경우 Full house 조건에 맞게 킵
-  const hasSelected4OfAKind = currentPlayer.scores["4 of a Kind"] !== undefined;
-  const hasSelectedFullHouse = currentPlayer.scores["Full House"] !== undefined;
+  // 두 번째 굴림에서는 조합을 고려하여 주사위를 킵
+  else if (rollCount === 2) {
+    const counts = {};
+    for (let i = 0; i < diceResults.length; i++) {
+      counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
+    }
 
-  if (hasSelected4OfAKind && !hasSelectedFullHouse) {
-    const fullHouseCondition = Object.values(counts).includes(3);
-    if (fullHouseCondition) {
-      keptDiceIndices.length = 0; // 이전에 킵한 주사위 인덱스 초기화
+    // Yacht 확인
+    if (
+      Object.values(counts).includes(5) &&
+      currentPlayer.scores["Yacht"] === undefined
+    ) {
+      const yahtzeeValue = Object.keys(counts).find((key) => counts[key] === 5);
       for (let i = 0; i < diceResults.length; i++) {
-        if (counts[diceResults[i]] >= 2) {
+        if (diceResults[i] == yahtzeeValue && !keptDiceIndices.includes(i)) {
           keptDiceIndices.push(i);
+        }
+      }
+    }
+    // 4 of a Kind 확인
+    else if (
+      Object.values(counts).includes(4) &&
+      currentPlayer.scores["4 of a Kind"] === undefined
+    ) {
+      const fourOfAKindValue = Object.keys(counts).find(
+        (key) => counts[key] === 4
+      );
+      for (let i = 0; i < diceResults.length; i++) {
+        if (
+          diceResults[i] == fourOfAKindValue &&
+          !keptDiceIndices.includes(i)
+        ) {
+          keptDiceIndices.push(i);
+        }
+      }
+    }
+    // Large Straight 확인
+    else if (
+      Object.keys(counts).length === 5 &&
+      Object.keys(counts).every((key) => counts[key] === 1) &&
+      currentPlayer.scores["L. Straight"] === undefined
+    ) {
+      for (let i = 0; i < diceResults.length; i++) {
+        if (!keptDiceIndices.includes(i)) {
+          keptDiceIndices.push(i);
+        }
+      }
+    }
+    // Full House 확인
+    else if (
+      Object.values(counts).includes(3) &&
+      Object.values(counts).includes(2) &&
+      currentPlayer.scores["Full House"] === undefined
+    ) {
+      const fullHouseValues = Object.keys(counts).filter(
+        (key) => counts[key] >= 2
+      );
+      for (let i = 0; i < diceResults.length; i++) {
+        if (
+          fullHouseValues.includes(String(diceResults[i])) &&
+          !keptDiceIndices.includes(i)
+        ) {
+          keptDiceIndices.push(i);
+        }
+      }
+    }
+    // Small Straight 확인
+    else if (currentPlayer.scores["S. Straight"] === undefined) {
+      const uniqueDices = [...new Set(diceResults)];
+      const missingDice = [1, 2, 3, 4, 5, 6].filter(
+        (num) => !uniqueDices.includes(num)
+      );
+
+      if (missingDice.length === 1 && uniqueDices.length === 4) {
+        for (let i = 0; i < diceResults.length; i++) {
+          if (
+            !missingDice.includes(diceResults[i]) &&
+            !keptDiceIndices.includes(i)
+          ) {
+            keptDiceIndices.push(i);
+          }
+        }
+      }
+    }
+
+    // 숫자 주사위 확인
+    if (keptDiceIndices.length === 0) {
+      const upperSectionNumbers = [
+        "Aces",
+        "Deuces",
+        "Threes",
+        "Fours",
+        "Fives",
+        "Sixes",
+      ];
+      const availableUpperSectionNumbers = upperSectionNumbers.filter(
+        (number) => currentPlayer.scores[number] === undefined
+      );
+
+      const keptDiceValues = keptDice.map((index) => diceResults[index]);
+      const keptDiceCounts = {};
+      for (let i = 0; i < keptDiceValues.length; i++) {
+        keptDiceCounts[keptDiceValues[i]] =
+          (keptDiceCounts[keptDiceValues[i]] || 0) + 1;
+      }
+
+      const pairs = Object.entries(counts)
+        .filter(([key, value]) => value + (keptDiceCounts[key] || 0) >= 2)
+        .sort((a, b) => b[0] - a[0]);
+
+      if (pairs.length > 0) {
+        for (const [number, count] of pairs) {
+          const upperSectionNumber = upperSectionNumbers[number - 1];
+
+          if (availableUpperSectionNumbers.includes(upperSectionNumber)) {
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                diceResults[i] === Number(number) &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      if (keptDiceIndices.length === 0) {
+        const availableCounts = {};
+        for (const number of availableUpperSectionNumbers) {
+          const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
+          availableCounts[number] = count;
+        }
+
+        const maxCount = Math.max(...Object.values(availableCounts));
+        const maxCountNumbers = Object.keys(availableCounts)
+          .filter((key) => availableCounts[key] === maxCount)
+          .sort(
+            (a, b) =>
+              upperSectionNumbers.indexOf(b) - upperSectionNumbers.indexOf(a)
+          );
+
+        for (let i = 0; i < diceResults.length; i++) {
+          if (
+            maxCountNumbers.includes(upperSectionNumbers[diceResults[i] - 1]) &&
+            !keptDiceIndices.includes(i)
+          ) {
+            keptDiceIndices.push(i);
+          }
         }
       }
     }
@@ -503,11 +733,37 @@ function selectCategory(diceResults) {
 
   // 4 of a Kind 확인
   if (
+    scores["4 of a Kind"] > 19 &&
+    currentPlayer.scores["4 of a Kind"] === undefined
+  ) {
+    return "4 of a Kind";
+  }
+
+  //Fours 확인
+  if (scores["Fours"] > 12 && currentPlayer.scores["Fours"] === undefined) {
+    return "Fours";
+  }
+
+  // 4 of a Kind 확인
+  if (
+    scores["4 of a Kind"] > 14 &&
+    currentPlayer.scores["4 of a Kind"] === undefined
+  ) {
+    return "4 of a Kind";
+  }
+
+  if (scores["Threes"] > 9 && currentPlayer.scores["Threes"] === undefined) {
+    return "Threes";
+  }
+
+  // 4 of a Kind 확인
+  if (
     scores["4 of a Kind"] > 0 &&
     currentPlayer.scores["4 of a Kind"] === undefined
   ) {
     return "4 of a Kind";
   }
+
   // Full House 확인
   if (
     scores["Full House"] > 0 &&
@@ -537,7 +793,7 @@ function selectCategory(diceResults) {
     return "Deuces";
   }
 
-  if (scores["Threes"] > 3 && currentPlayer.scores["Threes"] === undefined) {
+  if (scores["Threes"] > 6 && currentPlayer.scores["Threes"] === undefined) {
     return "Threes";
   }
 
@@ -561,6 +817,11 @@ function selectCategory(diceResults) {
   // Choice 확인
   if (currentPlayer.scores["Choice"] === undefined) {
     return "Choice";
+  }
+
+  // 할거 없으면 야추 떼기
+  if (currentPlayer.scores["Yacht"] === undefined) {
+    return "Yacht";
   }
 
   // 빈 카테고리에 점수 기록
