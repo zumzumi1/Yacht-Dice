@@ -319,53 +319,57 @@ function startGameWithComputer() {
 async function computerTurn() {
   isComputerTurn = true;
   rollDiceButton.disabled = true;
+
+  let keptDiceIndices = []; // 누적된 keptDiceIndices 배열 선언
+
   if (rollCount < 3 && keptDice.length < 5) {
-    await new Promise((resolve) => setTimeout(resolve, 700)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 700));
     resetAndRollDice();
     rollDiceButton.disabled = true;
-    await new Promise((resolve) => setTimeout(resolve, 700)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 700));
     resetAndRollDice();
     rollDiceButton.disabled = true;
     while (!diceStopped) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    await new Promise((resolve) => setTimeout(resolve, 700)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 700));
     const diceResults = diceMeshes
       .map((diceMesh) => findTopFace(diceMesh))
       .map(Number);
 
-    // 주사위 결과를 분석하여 킵할 주사위 선택
-    const keptDiceIndices = selectKeptDice(diceResults, rollCount);
-    keptDiceIndices.forEach((index) => {
+    // 이전에 선택된 keptDiceIndices를 전달하여 누적된 결과 사용
+    const selectedDiceIndices = selectKeptDice(
+      diceResults,
+      rollCount,
+      keptDiceIndices
+    );
+    keptDiceIndices = [...keptDiceIndices, ...selectedDiceIndices]; // 선택된 주사위 인덱스 누적
+    selectedDiceIndices.forEach((index) => {
       if (!keptDice.includes(index)) {
         keptDice.push(index);
       }
     });
     positionKeptDice();
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     await computerTurn();
   } else {
     while (!diceStopped) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 0.5초 지연
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     const finalDiceResults = diceMeshes
       .map((diceMesh) => findTopFace(diceMesh))
       .map(Number);
 
-    // 최종 주사위 결과를 분석하여 점수 선택
     const category = selectCategory(finalDiceResults);
     const score = judge.scoreBoard(finalDiceResults)[category];
 
-    // console.log(category, score);
-    await new Promise((resolve) => setTimeout(resolve, 500)); // 1.5초 지연
+    await new Promise((resolve) => setTimeout(resolve, 500));
     selectScore(category, score);
   }
 }
 
-function selectKeptDice(diceResults, rollCount) {
-  const keptDiceIndices = [];
-
+function selectKeptDice(diceResults, rollCount, keptDiceIndices) {
   const counts = {};
   diceResults.forEach((dice) => {
     counts[dice] = (counts[dice] || 0) + 1;
@@ -373,33 +377,25 @@ function selectKeptDice(diceResults, rollCount) {
 
   const maxCount = Math.max(...Object.values(counts));
 
-  // console.log(`maxCount : ${maxCount}\ncounts : ${counts}\nkeptDiceIndices : ${keptDiceIndices}`);
-  console.log(maxCount);
-  console.log(counts);
-  console.log(keptDiceIndices);
-
   if (maxCount >= 4) {
-    // Yacht이나 4 of a Kind가 가능한 경우, 해당 눈의 주사위를 모두 킵
     const maxCountDice = parseInt(
       Object.keys(counts).find((key) => counts[key] === maxCount)
     );
     diceResults.forEach((dice, index) => {
-      if (dice === maxCountDice) {
+      if (dice === maxCountDice && !keptDiceIndices.includes(index)) {
         keptDiceIndices.push(index);
       }
     });
   } else if (maxCount === 3) {
-    // Full House가 가능한 경우, 3개의 같은 눈을 킵
     const maxCountDice = parseInt(
       Object.keys(counts).find((key) => counts[key] === maxCount)
     );
     diceResults.forEach((dice, index) => {
-      if (dice === maxCountDice) {
+      if (dice === maxCountDice && !keptDiceIndices.includes(index)) {
         keptDiceIndices.push(index);
       }
     });
   } else {
-    // 스트레이트를 노리기 위해 필요한 눈의 주사위를 킵
     const uniqueDiceValues = [...new Set(diceResults)];
     if (uniqueDiceValues.length >= 4) {
       const sortedDiceValues = uniqueDiceValues.sort((a, b) => a - b);
@@ -411,7 +407,6 @@ function selectKeptDice(diceResults, rollCount) {
           sortedDiceValues.includes(5));
 
       if (isStraightPossible) {
-        // 스트레이트가 가능한 경우, 스트레이트를 이루는 주사위만 킵
         const straightDice = [];
         for (let i = 0; i < sortedDiceValues.length - 1; i++) {
           if (sortedDiceValues[i + 1] - sortedDiceValues[i] === 1) {
@@ -428,15 +423,49 @@ function selectKeptDice(diceResults, rollCount) {
         });
       }
     }
-    // 모두 해당하지 않을 경우, 가장 많이 나온 주사위를 킵
-    const maxCountDice = parseInt(
-      Object.keys(counts).find((key) => counts[key] === maxCount)
-    );
-    diceResults.forEach((dice, index) => {
-      if (dice === maxCountDice) {
-        keptDiceIndices.push(index);
-      }
-    });
+    if (keptDiceIndices.length === 0) {
+      const maxCountDice = parseInt(
+        Object.keys(counts).find((key) => counts[key] === maxCount)
+      );
+      diceResults.forEach((dice, index) => {
+        if (dice === maxCountDice && !keptDiceIndices.includes(index)) {
+          keptDiceIndices.push(index);
+        }
+      });
+    }
+    // if (keptDiceIndices.length === 0) {
+    //   const availableCategories = [
+    //     "Aces",
+    //     "Deuces",
+    //     "Threes",
+    //     "Fours",
+    //     "Fives",
+    //     "Sixes",
+    //   ];
+    //   let maxScore = 0;
+    //   let maxScoreDice = 0;
+    //   let maxCount = 0;
+
+    //   availableCategories.forEach((category) => {
+    //     if (currentPlayer.scores[category] === undefined) {
+    //       const dice = parseInt(category.slice(0, -1));
+    //       const count = counts[dice] || 0;
+    //       const score = dice * count;
+
+    //       if (count > maxCount || (count === maxCount && score > maxScore)) {
+    //         maxScore = score;
+    //         maxScoreDice = dice;
+    //         maxCount = count;
+    //       }
+    //     }
+    //   });
+
+    //   diceResults.forEach((dice, index) => {
+    //     if (dice === maxScoreDice && !keptDiceIndices.includes(index)) {
+    //       keptDiceIndices.push(index);
+    //     }
+    //   });
+    // }
   }
 
   return keptDiceIndices;
