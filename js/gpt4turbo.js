@@ -256,6 +256,839 @@ class ParticleSystem {
   }
 }
 
+const mainScreen = document.getElementById("mainScreen");
+const playWithFriendButton = document.getElementById("playWithFriendButton");
+const playWithComputerButton = document.getElementById(
+  "playWithComputerButton"
+);
+
+playWithFriendButton.addEventListener("click", () => {
+  mainScreen.style.display = "none";
+  playerNameForm.style.display = "block";
+});
+
+playWithComputerButton.addEventListener("click", () => {
+  mainScreen.style.display = "none";
+  startGameWithComputer();
+});
+
+function startGameWithComputer() {
+  // const randomOrder = Math.random() < 0.5;
+  // if (randomOrder) {
+  //   player1.name = "Player";
+  //   player2.name = "Computer";
+  // } else {
+  //   player1.name = "Computer";
+  //   player2.name = "Player";
+  //   renderScoreBoard();
+  //   resetAndRollDice();
+  //   setTimeout(() => {
+  //     computerTurn();
+  //   }, 1000);
+  // }
+
+  player1.name = "Computer";
+  player2.name = "Computer";
+
+  const displayPlayer1Name = player1.name;
+  const displayPlayer2Name = player2.name;
+
+  document.querySelector(".player1").textContent = displayPlayer1Name;
+  document.querySelector(".player2").textContent = displayPlayer2Name;
+  document.getElementById(
+    "currentPlayer"
+  ).textContent = `${currentPlayer.name}`;
+  const nextPlayerElement = document.querySelector(".nextplayer");
+  nextPlayerElement.textContent = `${currentPlayer.name.slice(0, 10)}${
+    currentPlayer.name.length > 10 ? "..." : ""
+  } Turn`;
+  nextPlayerElement.style.opacity = "1";
+  setTimeout(() => {
+    nextPlayerElement.style.opacity = "0";
+  }, 1200);
+
+  isGameStarted = true;
+
+  renderScoreBoard();
+  resetAndRollDice();
+  setTimeout(() => {
+    computerTurn();
+  }, 1000);
+}
+
+async function computerTurn() {
+  isComputerTurn = true;
+  rollDiceButton.disabled = true;
+  if (rollCount < 3 && keptDice.length < 5) {
+    await new Promise((resolve) => setTimeout(resolve, 700)); // 1초 지연
+    resetAndRollDice();
+    rollDiceButton.disabled = true;
+    await new Promise((resolve) => setTimeout(resolve, 700)); // 1초 지연
+    resetAndRollDice();
+    rollDiceButton.disabled = true;
+    while (!diceStopped) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 700)); // 1초 지연
+    const diceResults = diceMeshes
+      .map((diceMesh) => findTopFace(diceMesh))
+      .map(Number);
+
+    // 주사위 결과를 분석하여 킵할 주사위 선택
+    const keptDiceIndices = selectKeptDice(diceResults, rollCount);
+    keptDiceIndices.forEach((index) => {
+      if (!keptDice.includes(index)) {
+        keptDice.push(index);
+      }
+    });
+    positionKeptDice();
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    await computerTurn();
+  } else {
+    while (!diceStopped) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 0.5초 지연
+    const finalDiceResults = diceMeshes
+      .map((diceMesh) => findTopFace(diceMesh))
+      .map(Number);
+
+    // 최종 주사위 결과를 분석하여 점수 선택
+    const category = selectCategory(finalDiceResults);
+    const score = judge.scoreBoard(finalDiceResults)[category];
+
+    // console.log(category, score);
+    await new Promise((resolve) => setTimeout(resolve, 500)); // 1.5초 지연
+    selectScore(category, score);
+  }
+}
+
+function selectKeptDice(diceResults, rollCount) {
+  const keptDiceIndices = [];
+  const scores = judge.scoreBoard(diceResults);
+
+  // 기존에 킵한 주사위가 있는 경우, 해당 주사위는 계속 킵하도록 설정
+  for (let i = 0; i < diceResults.length; i++) {
+    if (keptDice.includes(i)) {
+      keptDiceIndices.push(i);
+    }
+  }
+  // 첫 번째 굴림에서는 높은 숫자의 주사위를 킵
+  if (rollCount === 1) {
+    if (
+      0
+      // currentPlayer.scores["Aces"] !== undefined &&
+      // currentPlayer.scores["Choice"] !== undefined
+    ) {
+      const counts = {};
+      for (let i = 0; i < diceResults.length; i++) {
+        counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
+      }
+
+      const upperSectionNumbers = [
+        "Aces",
+        "Deuces",
+        "Threes",
+        "Fours",
+        "Fives",
+        "Sixes",
+      ];
+      const availableNumbers = upperSectionNumbers.filter(
+        (number) => currentPlayer.scores[number] === undefined
+      );
+
+      const availableCounts = {};
+      for (const number of availableNumbers) {
+        const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
+        availableCounts[number] = count;
+      }
+
+      const maxCount = Math.max(...Object.values(availableCounts));
+      const maxCountNumber = Object.keys(availableCounts).find(
+        (key) => availableCounts[key] === maxCount
+      );
+
+      for (let i = 0; i < diceResults.length; i++) {
+        if (
+          upperSectionNumbers[diceResults[i] - 1] === maxCountNumber &&
+          !keptDiceIndices.includes(i)
+        ) {
+          keptDiceIndices.push(i);
+        }
+      }
+    } else {
+      const upperSectionNumbers = [
+        "Aces",
+        "Deuces",
+        "Threes",
+        "Fours",
+        "Fives",
+        "Sixes",
+      ];
+      const availableUpperSectionNumbers = upperSectionNumbers.filter(
+        (number) => currentPlayer.scores[number] === undefined
+      );
+
+      const counts = {};
+      for (let i = 0; i < diceResults.length; i++) {
+        counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
+      }
+
+      const triples = Object.entries(counts)
+        .filter(([key, value]) => value >= 3)
+        .sort((a, b) => b[0] - a[0]);
+
+      if (triples.length > 0) {
+        for (const [number, count] of triples) {
+          const upperSectionNumber = upperSectionNumbers[number - 1];
+
+          if (availableUpperSectionNumbers.includes(upperSectionNumber)) {
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                diceResults[i] === Number(number) &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+            break;
+          }
+        }
+
+        if (keptDiceIndices.length === 3) {
+          const remainingDice = diceResults.filter(
+            (_, index) => !keptDiceIndices.includes(index)
+          );
+          const remainingNumber = remainingDice[0];
+          const remainingUpperSectionNumber =
+            upperSectionNumbers[remainingNumber - 1];
+
+          if (
+            availableUpperSectionNumbers.includes(remainingUpperSectionNumber)
+          ) {
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                diceResults[i] === remainingNumber &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+          }
+        }
+      }
+
+      const pairs = Object.entries(counts)
+        .filter(([key, value]) => value >= 2)
+        .sort((a, b) => b[0] - a[0]);
+
+      if (pairs.length > 0) {
+        for (const [number, count] of pairs) {
+          const upperSectionNumber = upperSectionNumbers[number - 1];
+
+          if (availableUpperSectionNumbers.includes(upperSectionNumber)) {
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                diceResults[i] === Number(number) &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+            break;
+          } else if (
+            currentPlayer.scores["Full House"] === undefined &&
+            pairs.length > 1
+          ) {
+            const pairNumbers = pairs.map(([number]) => Number(number));
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                pairNumbers.includes(diceResults[i]) &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+            break;
+          } else if (
+            (currentPlayer.scores["Yacht"] === undefined ||
+              currentPlayer.scores["4 of a Kind"] === undefined) &&
+            count >= 4
+          ) {
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                diceResults[i] === Number(number) &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+            break;
+          }
+        }
+      } else {
+        const allDifferent = Object.values(counts).every(
+          (count) => count === 1
+        );
+
+        if (allDifferent) {
+          const availableCounts = {};
+          for (const number of availableUpperSectionNumbers) {
+            const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
+            availableCounts[number] = count;
+          }
+
+          const maxNumber = Math.max(...Object.keys(availableCounts));
+          const maxNumberIndex = diceResults.indexOf(maxNumber);
+
+          if (
+            maxNumberIndex !== -1 &&
+            !keptDiceIndices.includes(maxNumberIndex)
+          ) {
+            keptDiceIndices.push(maxNumberIndex);
+          }
+        } else {
+          const availableCounts = {};
+          for (const number of availableUpperSectionNumbers) {
+            const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
+            availableCounts[number] = count;
+          }
+
+          const maxCount = Math.max(...Object.values(availableCounts));
+          const maxCountNumbers = Object.keys(availableCounts)
+            .filter((key) => availableCounts[key] === maxCount)
+            .sort(
+              (a, b) =>
+                upperSectionNumbers.indexOf(b) - upperSectionNumbers.indexOf(a)
+            );
+
+          for (let i = 0; i < diceResults.length; i++) {
+            if (
+              maxCountNumbers.includes(
+                upperSectionNumbers[diceResults[i] - 1]
+              ) &&
+              !keptDiceIndices.includes(i)
+            ) {
+              keptDiceIndices.push(i);
+            }
+          }
+        }
+      }
+
+      if (keptDiceIndices.length === 0) {
+        const availableCounts = {};
+        for (const number of availableUpperSectionNumbers) {
+          const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
+          availableCounts[number] = count;
+        }
+
+        const maxNumber = Math.max(...Object.keys(availableCounts));
+        const maxNumberIndex = diceResults.indexOf(
+          upperSectionNumbers.indexOf(maxNumber) + 1
+        );
+
+        if (
+          maxNumberIndex !== -1 &&
+          !keptDiceIndices.includes(maxNumberIndex)
+        ) {
+          keptDiceIndices.push(maxNumberIndex);
+        }
+      }
+
+      // Small Straight 확인
+      if (currentPlayer.scores["S. Straight"] === undefined) {
+        const uniqueDices = [...new Set(diceResults)];
+        const missingDice = [1, 2, 3, 4, 5, 6].filter(
+          (num) => !uniqueDices.includes(num)
+        );
+
+        if (missingDice.length <= 2 && uniqueDices.length >= 3) {
+          const sortedDice = uniqueDices.sort((a, b) => a - b);
+          const consecutiveDice = [];
+          let currentStreak = [sortedDice[0]];
+
+          for (let i = 1; i < sortedDice.length; i++) {
+            if (sortedDice[i] - sortedDice[i - 1] === 1) {
+              currentStreak.push(sortedDice[i]);
+            } else {
+              if (currentStreak.length >= 3) {
+                consecutiveDice.push(...currentStreak);
+              }
+              currentStreak = [sortedDice[i]];
+            }
+          }
+
+          if (currentStreak.length >= 3) {
+            consecutiveDice.push(...currentStreak);
+          }
+
+          if (consecutiveDice.length >= 3) {
+            if (rollCount === 1) {
+              const counts = {};
+              for (let i = 0; i < diceResults.length; i++) {
+                counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
+              }
+
+              const pairs = Object.entries(counts).filter(
+                ([key, value]) => value >= 2
+              );
+              if (pairs.length > 0) {
+                const pairNumber = Number(pairs[0][0]);
+                for (let i = 0; i < diceResults.length; i++) {
+                  if (
+                    diceResults[i] === pairNumber &&
+                    !keptDiceIndices.includes(i)
+                  ) {
+                    keptDiceIndices.push(i);
+                  }
+                }
+              } else {
+                for (let i = 0; i < diceResults.length; i++) {
+                  if (
+                    consecutiveDice.includes(diceResults[i]) &&
+                    !keptDiceIndices.includes(i)
+                  ) {
+                    keptDiceIndices.push(i);
+                  }
+                }
+              }
+            } else {
+              for (let i = 0; i < diceResults.length; i++) {
+                if (
+                  consecutiveDice.includes(diceResults[i]) &&
+                  !keptDiceIndices.includes(i)
+                ) {
+                  keptDiceIndices.push(i);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Large Straight 확인
+      else if (currentPlayer.scores["L. Straight"] === undefined) {
+        const uniqueDices = [...new Set(diceResults)];
+        const missingDice = [1, 2, 3, 4, 5, 6].filter(
+          (num) => !uniqueDices.includes(num)
+        );
+
+        if (missingDice.length <= 1 && uniqueDices.length >= 4) {
+          const sortedDice = uniqueDices.sort((a, b) => a - b);
+          const consecutiveDice = [];
+          let currentStreak = [sortedDice[0]];
+
+          for (let i = 1; i < sortedDice.length; i++) {
+            if (sortedDice[i] - sortedDice[i - 1] === 1) {
+              currentStreak.push(sortedDice[i]);
+            } else {
+              if (currentStreak.length >= 4) {
+                consecutiveDice.push(...currentStreak);
+              }
+              currentStreak = [sortedDice[i]];
+            }
+          }
+
+          if (currentStreak.length >= 4) {
+            consecutiveDice.push(...currentStreak);
+          }
+
+          if (consecutiveDice.length >= 4) {
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                consecutiveDice.includes(diceResults[i]) &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 두 번째 굴림에서는 조합을 고려하여 주사위를 킵
+  else if (rollCount === 2) {
+    const counts = {};
+    for (let i = 0; i < diceResults.length; i++) {
+      counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
+    }
+
+    // 첫 번째 굴림에서 킵한 주사위와 같은 숫자의 주사위를 추가로 킵
+    const keptDiceValues = keptDice.map((index) => diceResults[index]);
+    const keptDiceCounts = {};
+    for (let i = 0; i < keptDiceValues.length; i++) {
+      keptDiceCounts[keptDiceValues[i]] =
+        (keptDiceCounts[keptDiceValues[i]] || 0) + 1;
+    }
+
+    for (const [number, count] of Object.entries(counts)) {
+      if (keptDiceCounts[number]) {
+        for (let i = 0; i < diceResults.length; i++) {
+          if (
+            diceResults[i] === Number(number) &&
+            !keptDiceIndices.includes(i)
+          ) {
+            keptDiceIndices.push(i);
+          }
+        }
+      }
+    }
+
+    // Yacht 확인
+    if (
+      Object.values(counts).includes(5) &&
+      currentPlayer.scores["Yacht"] === undefined
+    ) {
+      const yahtzeeValue = Object.keys(counts).find((key) => counts[key] === 5);
+      for (let i = 0; i < diceResults.length; i++) {
+        if (diceResults[i] == yahtzeeValue && !keptDiceIndices.includes(i)) {
+          keptDiceIndices.push(i);
+        }
+      }
+    }
+    // 4 of a Kind 확인
+    else if (
+      Object.values(counts).includes(4) &&
+      currentPlayer.scores["4 of a Kind"] === undefined
+    ) {
+      const fourOfAKindValue = Object.keys(counts).find(
+        (key) => counts[key] === 4
+      );
+      for (let i = 0; i < diceResults.length; i++) {
+        if (
+          diceResults[i] == fourOfAKindValue &&
+          !keptDiceIndices.includes(i)
+        ) {
+          keptDiceIndices.push(i);
+        }
+      }
+    }
+
+    // Full House 확인
+    else if (
+      Object.values(counts).includes(3) &&
+      Object.values(counts).includes(2) &&
+      currentPlayer.scores["Full House"] === undefined
+    ) {
+      const fullHouseValues = Object.keys(counts).filter(
+        (key) => counts[key] >= 2
+      );
+      const fullHouseSum = fullHouseValues.reduce(
+        (sum, value) => sum + Number(value) * counts[value],
+        0
+      );
+
+      if (fullHouseSum > 12) {
+        for (let i = 0; i < diceResults.length; i++) {
+          if (
+            fullHouseValues.includes(String(diceResults[i])) &&
+            !keptDiceIndices.includes(i)
+          ) {
+            keptDiceIndices.push(i);
+          }
+        }
+      }
+    }
+
+    // 숫자 주사위 확인
+    if (keptDiceIndices.length === 0) {
+      const upperSectionNumbers = [
+        "Aces",
+        "Deuces",
+        "Threes",
+        "Fours",
+        "Fives",
+        "Sixes",
+      ];
+      const availableUpperSectionNumbers = upperSectionNumbers.filter(
+        (number) => currentPlayer.scores[number] === undefined
+      );
+
+      const keptDiceValues = keptDice.map((index) => diceResults[index]);
+      const keptDiceCounts = {};
+      for (let i = 0; i < keptDiceValues.length; i++) {
+        keptDiceCounts[keptDiceValues[i]] =
+          (keptDiceCounts[keptDiceValues[i]] || 0) + 1;
+      }
+
+      const pairs = Object.entries(counts)
+        .filter(([key, value]) => value + (keptDiceCounts[key] || 0) >= 2)
+        .sort((a, b) => b[0] - a[0]);
+
+      if (pairs.length > 0) {
+        for (const [number, count] of pairs) {
+          const upperSectionNumber = upperSectionNumbers[number - 1];
+
+          if (availableUpperSectionNumbers.includes(upperSectionNumber)) {
+            for (let i = 0; i < diceResults.length; i++) {
+              if (
+                diceResults[i] === Number(number) &&
+                !keptDiceIndices.includes(i)
+              ) {
+                keptDiceIndices.push(i);
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      if (keptDiceIndices.length === 0) {
+        const availableCounts = {};
+        for (const number of availableUpperSectionNumbers) {
+          const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
+          availableCounts[number] = count;
+        }
+
+        const maxCount = Math.max(...Object.values(availableCounts));
+        const maxCountNumbers = Object.keys(availableCounts)
+          .filter((key) => availableCounts[key] === maxCount)
+          .sort(
+            (a, b) =>
+              upperSectionNumbers.indexOf(b) - upperSectionNumbers.indexOf(a)
+          );
+
+        for (let i = 0; i < diceResults.length; i++) {
+          if (
+            maxCountNumbers.includes(upperSectionNumbers[diceResults[i] - 1]) &&
+            !keptDiceIndices.includes(i)
+          ) {
+            keptDiceIndices.push(i);
+          }
+        }
+      }
+    }
+  }
+
+  // Small Straight 확인
+  if (currentPlayer.scores["S. Straight"] === undefined) {
+    const uniqueDices = [...new Set(diceResults)];
+    const missingDice = [1, 2, 3, 4, 5, 6].filter(
+      (num) => !uniqueDices.includes(num)
+    );
+
+    if (missingDice.length <= 2 && uniqueDices.length >= 3) {
+      const sortedDice = uniqueDices.sort((a, b) => a - b);
+      const consecutiveDice = [];
+      let currentStreak = [sortedDice[0]];
+
+      for (let i = 1; i < sortedDice.length; i++) {
+        if (sortedDice[i] - sortedDice[i - 1] === 1) {
+          currentStreak.push(sortedDice[i]);
+        } else {
+          if (currentStreak.length >= 3) {
+            consecutiveDice.push(...currentStreak);
+          }
+          currentStreak = [sortedDice[i]];
+        }
+      }
+
+      if (currentStreak.length >= 3) {
+        consecutiveDice.push(...currentStreak);
+      }
+
+      if (consecutiveDice.length === 4) {
+        if (rollCount === 1) {
+          for (let i = 0; i < diceResults.length; i++) {
+            if (
+              consecutiveDice.includes(diceResults[i]) &&
+              !keptDiceIndices.includes(i)
+            ) {
+              keptDiceIndices.push(i);
+            }
+          }
+        } else {
+          const missingNumber = [1, 2, 3, 4, 5, 6].find(
+            (num) => !consecutiveDice.includes(num) && missingDice.includes(num)
+          );
+          for (let i = 0; i < diceResults.length; i++) {
+            if (
+              consecutiveDice.includes(diceResults[i]) &&
+              !keptDiceIndices.includes(i) &&
+              diceResults[i] !== missingNumber
+            ) {
+              keptDiceIndices.push(i);
+            }
+          }
+        }
+      } else {
+        for (let i = 0; i < diceResults.length; i++) {
+          if (
+            consecutiveDice.includes(diceResults[i]) &&
+            !keptDiceIndices.includes(i)
+          ) {
+            keptDiceIndices.push(i);
+          }
+        }
+      }
+    }
+  }
+
+  // Large Straight 확인
+  if (currentPlayer.scores["L. Straight"] === undefined) {
+    const uniqueDices = [...new Set(diceResults)];
+    const missingDice = [1, 2, 3, 4, 5, 6].filter(
+      (num) => !uniqueDices.includes(num)
+    );
+
+    if (missingDice.length <= 1 && uniqueDices.length >= 4) {
+      const sortedDice = uniqueDices.sort((a, b) => a - b);
+      const consecutiveDice = [];
+      let currentStreak = [sortedDice[0]];
+
+      for (let i = 1; i < sortedDice.length; i++) {
+        if (sortedDice[i] - sortedDice[i - 1] === 1) {
+          currentStreak.push(sortedDice[i]);
+        } else {
+          if (currentStreak.length >= 4) {
+            consecutiveDice.push(...currentStreak);
+          }
+          currentStreak = [sortedDice[i]];
+        }
+      }
+
+      if (currentStreak.length >= 4) {
+        consecutiveDice.push(...currentStreak);
+      }
+
+      if (consecutiveDice.length === 5) {
+        for (let i = 0; i < diceResults.length; i++) {
+          if (
+            consecutiveDice.includes(diceResults[i]) &&
+            !keptDiceIndices.includes(i)
+          ) {
+            keptDiceIndices.push(i);
+          }
+        }
+      } else if (consecutiveDice.length === 4 && missingDice.length === 1) {
+        // L. Straight가 완성되지 않았고, 남은 주사위가 1개인 경우
+        // 남은 주사위 하나만 킵하고, 나머지는 굴리기
+        for (let i = 0; i < diceResults.length; i++) {
+          if (
+            consecutiveDice.includes(diceResults[i]) &&
+            !keptDiceIndices.includes(i)
+          ) {
+            keptDiceIndices.push(i);
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  return keptDiceIndices;
+}
+
+function selectCategory(diceResults) {
+  const scores = judge.scoreBoard(diceResults);
+
+  // Yacht 확인
+  if (scores["Yacht"] === 50 && currentPlayer.scores["Yacht"] === undefined) {
+    return "Yacht";
+  }
+
+  if (scores["Sixes"] > 18 && currentPlayer.scores["Sixes"] === undefined) {
+    return "Sixes";
+  }
+
+  if (scores["Fives"] > 15 && currentPlayer.scores["Fives"] === undefined) {
+    return "Fives";
+  }
+
+  // 4 of a Kind 확인
+  if (
+    scores["4 of a Kind"] > 19 &&
+    currentPlayer.scores["4 of a Kind"] === undefined
+  ) {
+    return "4 of a Kind";
+  }
+
+  //Fours 확인
+  if (scores["Fours"] > 12 && currentPlayer.scores["Fours"] === undefined) {
+    return "Fours";
+  }
+
+  // 4 of a Kind 확인
+  if (
+    scores["4 of a Kind"] > 14 &&
+    currentPlayer.scores["4 of a Kind"] === undefined
+  ) {
+    return "4 of a Kind";
+  }
+
+  if (scores["Threes"] > 9 && currentPlayer.scores["Threes"] === undefined) {
+    return "Threes";
+  }
+
+  // Full House 확인
+  if (
+    scores["Full House"] > 0 &&
+    currentPlayer.scores["Full House"] === undefined
+  ) {
+    return "Full House";
+  }
+
+  // Large Straight 확인
+  if (
+    scores["L. Straight"] === 30 &&
+    currentPlayer.scores["L. Straight"] === undefined
+  ) {
+    return "L. Straight";
+  }
+
+  // Small Straight 확인
+  if (
+    scores["S. Straight"] === 15 &&
+    currentPlayer.scores["S. Straight"] === undefined
+  ) {
+    return "S. Straight";
+  }
+
+  if (scores["Deuces"] > 2 && currentPlayer.scores["Deuces"] === undefined) {
+    return "Deuces";
+  }
+
+  if (scores["Threes"] > 6 && currentPlayer.scores["Threes"] === undefined) {
+    return "Threes";
+  }
+
+  if (scores["Fours"] > 8 && currentPlayer.scores["Fours"] === undefined) {
+    return "Fours";
+  }
+
+  if (scores["Fives"] > 10 && currentPlayer.scores["Fives"] === undefined) {
+    return "Fives";
+  }
+
+  if (scores["Sixes"] > 12 && currentPlayer.scores["Sixes"] === undefined) {
+    return "Sixes";
+  }
+
+  // Aces 확인
+  if (currentPlayer.scores["Aces"] === undefined) {
+    return "Aces";
+  }
+
+  // Choice 확인
+  if (currentPlayer.scores["Choice"] === undefined) {
+    return "Choice";
+  }
+
+  // 할거 없으면 야추 떼기
+  if (currentPlayer.scores["Yacht"] === undefined) {
+    return "Yacht";
+  }
+
+  // 빈 카테고리에 점수 기록
+  for (const category in scores) {
+    if (currentPlayer.scores[category] === undefined) {
+      return category;
+    }
+  }
+}
+
 let isGameStarted = false;
 
 const playerNameForm = document.getElementById("playerNameForm");
@@ -366,9 +1199,11 @@ function renderScoreBoard() {
       if (currentPlayer === player1 && rollState === "ready") {
         player1ScoreCell.textContent = score;
         player1ScoreCell.classList.add("selectable");
-        player1ScoreCell.addEventListener("click", () => {
-          selectScore(category, score);
-        });
+        if (!isComputerTurn) {
+          player1ScoreCell.addEventListener("click", () => {
+            selectScore(category, score);
+          });
+        }
       } else {
         player1ScoreCell.textContent = "";
       }
@@ -396,9 +1231,11 @@ function renderScoreBoard() {
       if (currentPlayer === player2 && rollState === "ready") {
         player2ScoreCell.textContent = score;
         player2ScoreCell.classList.add("selectable");
-        player2ScoreCell.addEventListener("click", () =>
-          selectScore(category, score)
-        );
+        if (!isComputerTurn) {
+          player2ScoreCell.addEventListener("click", () => {
+            selectScore(category, score);
+          });
+        }
       } else {
         player2ScoreCell.textContent = "";
       }
@@ -519,9 +1356,11 @@ function renderScoreBoard() {
       if (currentPlayer === player1 && rollState === "ready") {
         player1ScoreCell.textContent = score;
         player1ScoreCell.classList.add("selectable");
-        player1ScoreCell.addEventListener("click", () =>
-          selectScore(category, score)
-        );
+        if (!isComputerTurn) {
+          player1ScoreCell.addEventListener("click", () => {
+            selectScore(category, score);
+          });
+        }
       } else {
         player1ScoreCell.textContent = "";
       }
@@ -549,9 +1388,11 @@ function renderScoreBoard() {
       if (currentPlayer === player2 && rollState === "ready") {
         player2ScoreCell.textContent = score;
         player2ScoreCell.classList.add("selectable");
-        player2ScoreCell.addEventListener("click", () =>
-          selectScore(category, score)
-        );
+        if (!isComputerTurn) {
+          player2ScoreCell.addEventListener("click", () => {
+            selectScore(category, score);
+          });
+        }
       } else {
         player2ScoreCell.textContent = "";
       }
@@ -656,6 +1497,8 @@ function renderScoreBoard() {
 let IsGameover = false;
 let lastClickedScore = null;
 let lastScoreClickTime = 0;
+let isComputerTurn = false;
+
 // 점수 선택 함수 수정
 function selectScore(category, score) {
   if (diceStopped) {
@@ -666,13 +1509,9 @@ function selectScore(category, score) {
     document.getElementById("rollDiceButton").style.display = "none";
     currentPlayer = currentPlayer === player1 ? player2 : player1;
     turnEnded = true;
-    // document.getElementById("diceResults").innerText = `총 결과: `;
-    // document.getElementById("keptDiceResults").innerText = `킵한 주사위: `;
-
     keptDice.length = 0;
     renderScoreBoard();
     checkGameOver();
-
     document.getElementById("remainingRolls").textContent = `${0} Left`;
 
     if (!IsGameover) {
@@ -699,6 +1538,12 @@ function selectScore(category, score) {
         }, 1200);
         rollState = "ready";
         resetAndRollDice();
+        if (currentPlayer.name === "Computer") {
+          isComputerTurn = true;
+          computerTurn();
+        } else {
+          isComputerTurn = false;
+        }
       }, 1000); // 1초(1000ms) 후에 resetAndRollDice 함수 호출
     }
   }
@@ -1280,7 +2125,11 @@ function showDiceResults() {
   if (rollCount >= 3) {
     document.getElementById("rollDiceButton").style.display = "none";
   } else {
-    document.getElementById("rollDiceButton").style.display = "block";
+    if (isComputerTurn) {
+      document.getElementById("rollDiceButton").style.display = "none";
+    } else {
+      document.getElementById("rollDiceButton").style.display = "block";
+    }
   }
   renderScoreBoard();
   diceStopped = true;
@@ -1302,49 +2151,51 @@ function getRotationByValue(value) {
 const keptDice = []; // Array to store kept dice indices
 
 function onDiceClick(event) {
-  diceMeshes.forEach((diceMesh) => {
-    if (diceMesh && diceMesh.children.length > 1) {
-      const outerMesh = diceMesh.children[1];
-      if (outerMesh && outerMesh.material) {
-        outerMesh.material.color.setHex(0xeeeeee); // 기본 색상으로 설정
+  if (!isComputerTurn) {
+    diceMeshes.forEach((diceMesh) => {
+      if (diceMesh && diceMesh.children.length > 1) {
+        const outerMesh = diceMesh.children[1];
+        if (outerMesh && outerMesh.material) {
+          outerMesh.material.color.setHex(0xeeeeee); // 기본 색상으로 설정
+        }
       }
-    }
-  });
-  const scoreBoard = document.querySelector(".user");
-  const scoreBoardWidth = scoreBoard.offsetWidth;
+    });
+    const scoreBoard = document.querySelector(".user");
+    const scoreBoardWidth = scoreBoard.offsetWidth;
 
-  const canvasRect = renderer.domElement.getBoundingClientRect();
-  const mouse = new THREE.Vector2(
-    ((event.clientX - canvasRect.left) / canvasRect.width) * 2 - 1,
-    -((event.clientY - canvasRect.top) / canvasRect.height) * 2 + 1
-  );
+    const canvasRect = renderer.domElement.getBoundingClientRect();
+    const mouse = new THREE.Vector2(
+      ((event.clientX - canvasRect.left) / canvasRect.width) * 2 - 1,
+      -((event.clientY - canvasRect.top) / canvasRect.height) * 2 + 1
+    );
 
-  const raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera(mouse, camera);
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
 
-  const intersects = raycaster.intersectObjects(scene.children, true);
-  if (intersects.length > 0) {
-    const clickedObject = intersects[0].object;
-    const clickedDice = findParentDice(clickedObject);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    if (intersects.length > 0) {
+      const clickedObject = intersects[0].object;
+      const clickedDice = findParentDice(clickedObject);
 
-    if (clickedDice && diceStopped && rollCount > 0) {
-      const index = diceMeshes.indexOf(clickedDice);
-      const keptIndex = keptDice.indexOf(index);
+      if (clickedDice && diceStopped && rollCount > 0) {
+        const index = diceMeshes.indexOf(clickedDice);
+        const keptIndex = keptDice.indexOf(index);
 
-      rollState = "ready";
-      rollDiceButton.innerText = "Roll ready";
-      const keptResults = keptDice
-        .map((index) => Number(findTopFace(diceMeshes[index])))
-        .sort((a, b) => a - b)
-        .join(", ");
+        rollState = "ready";
+        rollDiceButton.innerText = "Roll ready";
+        const keptResults = keptDice
+          .map((index) => Number(findTopFace(diceMeshes[index])))
+          .sort((a, b) => a - b)
+          .join(", ");
 
-      if (keptIndex !== -1) {
-        // 킵된 주사위를 다시 누르면 킵 해제
-        keptDice.splice(keptIndex, 1);
-      } else if (!keptDice.includes(index)) {
-        keptDice.push(index);
+        if (keptIndex !== -1) {
+          // 킵된 주사위를 다시 누르면 킵 해제
+          keptDice.splice(keptIndex, 1);
+        } else if (!keptDice.includes(index)) {
+          keptDice.push(index);
+        }
+        positionKeptDice();
       }
-      positionKeptDice();
     }
   }
 }
@@ -1456,7 +2307,7 @@ const categories = [
 ];
 
 function handleKeyDown(event) {
-  if (diceStopped && rollCount > 0) {
+  if (diceStopped && rollCount > 0 && !isComputerTurn) {
     const remainingDiceIndices = sortedDiceIndices.filter(
       (index) => !keptDice.includes(index)
     );
@@ -1465,7 +2316,7 @@ function handleKeyDown(event) {
       if (isKeptDiceSelected) {
         selectedDiceIndex = Math.max(0, selectedDiceIndex - 1);
       } else if (isCategorySelected) {
-        selectedCategoryIndex = Math.max(0, selectedCategoryIndex - 1);
+        selectedCategoryIndex = Math.max(0, selectedCategoryIndex - 0);
         highlightSelectedCategory();
       } else {
         selectedDiceIndex = Math.max(-1, selectedDiceIndex - 1);
@@ -1792,7 +2643,7 @@ let lastButtonClick = 0;
 const buttonCooldown = CoolTime; // 쿨타임 (ms)
 // 버튼 클릭 이벤트에 함수 연결
 rollDiceButton.addEventListener("click", function (event) {
-  if (isGameStarted) {
+  if (isGameStarted && !isComputerTurn) {
     const currentTime = new Date().getTime();
     if (currentTime - lastButtonClick > buttonCooldown) {
       lastButtonClick = currentTime;
@@ -1806,7 +2657,12 @@ const spacebarCooldown = CoolTime; // 쿨타임 (ms)
 
 // 스페이스바 누르면 주사위 굴리기 버튼 클릭 이벤트 발생
 document.addEventListener("keydown", function (event) {
-  if (isGameStarted && event.code === "Space" && diceStopped) {
+  if (
+    isGameStarted &&
+    event.code === "Space" &&
+    diceStopped &&
+    !isComputerTurn
+  ) {
     const currentTime = new Date().getTime();
     if (
       currentTime - lastSpacebarPress > spacebarCooldown &&
