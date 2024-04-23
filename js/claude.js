@@ -454,7 +454,9 @@ function selectKeptDice(diceResults, rollCount, keptDiceIndices) {
     }
     if (keptDiceIndices.length === 0) {
       if (
-        rollCount < 2 &&
+        (currentPlayer.scores["Aces"] === undefined ||
+          currentPlayer.scores["Choice"] === undefined) &&
+        rollCount < 1 &&
         currentPlayer.scores["Full House"] === undefined &&
         Object.values(counts).filter((count) => count >= 2).length === 2
       ) {
@@ -505,7 +507,14 @@ function selectKeptDice(diceResults, rollCount, keptDiceIndices) {
         )
         .map(Number);
 
-      if (updatedAvailableCategories.length > 0) {
+      if (counts[keptDiceValue] > 1) {
+        // 킵한 주사위와 같은 값이 2개 이상인 경우
+        diceResults.forEach((dice, index) => {
+          if (dice === keptDiceValue && !keptDiceIndices.includes(index)) {
+            keptDiceIndices.push(index);
+          }
+        });
+      } else if (updatedAvailableCategories.length > 0) {
         const maxAvailableDice = updatedAvailableCategories.reduce((a, b) =>
           counts[a] > counts[b] ? a : b
         );
@@ -522,13 +531,6 @@ function selectKeptDice(diceResults, rollCount, keptDiceIndices) {
             }
             return indices;
           }, []);
-        } else {
-          // 다른 카테고리의 주사위를 선택하는 경우
-          diceResults.forEach((dice, index) => {
-            if (dice === maxAvailableDice && !keptDiceIndices.includes(index)) {
-              keptDiceIndices.push(index);
-            }
-          });
         }
       }
     }
@@ -550,6 +552,19 @@ function selectKeptDice(diceResults, rollCount, keptDiceIndices) {
 
 function selectCategory(diceResults) {
   const scores = judge.scoreBoard(diceResults);
+  const upperCategories = [
+    "Aces",
+    "Deuces",
+    "Threes",
+    "Fours",
+    "Fives",
+    "Sixes",
+  ];
+  const upperScores = upperCategories.reduce(
+    (sum, category) => sum + (currentPlayer.scores[category] || 0),
+    0
+  );
+  const remainingForBonus = 63 - upperScores;
 
   // Yacht 확인
   if (scores["Yacht"] === 50 && currentPlayer.scores["Yacht"] === undefined) {
@@ -613,7 +628,7 @@ function selectCategory(diceResults) {
     return "S. Straight";
   }
 
-  if (scores["Deuces"] > 2 && currentPlayer.scores["Deuces"] === undefined) {
+  if (scores["Deuces"] >= 2 && currentPlayer.scores["Deuces"] === undefined) {
     return "Deuces";
   }
 
@@ -631,6 +646,28 @@ function selectCategory(diceResults) {
 
   if (scores["Sixes"] > 12 && currentPlayer.scores["Sixes"] === undefined) {
     return "Sixes";
+  }
+
+  // 보너스를 먹을 수 있는 상황에서 숫자 카테고리 확인
+  if (remainingForBonus <= 6) {
+    if (scores["Sixes"] >= remainingForBonus && currentPlayer.scores["Sixes"] === undefined) {
+      return "Sixes";
+    }
+    if (scores["Fives"] >= remainingForBonus && currentPlayer.scores["Fives"] === undefined) {
+      return "Fives";
+    }
+    if (scores["Fours"] >= remainingForBonus && currentPlayer.scores["Fours"] === undefined) {
+      return "Fours";
+    }
+    if (scores["Threes"] >= remainingForBonus && currentPlayer.scores["Threes"] === undefined) {
+      return "Threes";
+    }
+    if (scores["Deuces"] >= remainingForBonus && currentPlayer.scores["Deuces"] === undefined) {
+      return "Deuces";
+    }
+    if (scores["Aces"] >= remainingForBonus && currentPlayer.scores["Aces"] === undefined) {
+      return "Aces";
+    }
   }
 
   // Choice 확인
