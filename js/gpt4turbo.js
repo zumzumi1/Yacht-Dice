@@ -288,7 +288,7 @@ function startGameWithComputer() {
   // }
 
   player1.name = "Computer";
-  player2.name = "Computer";
+  player2.name = "Player";
 
   const displayPlayer1Name = player1.name;
   const displayPlayer2Name = player2.name;
@@ -332,7 +332,7 @@ async function computerTurn() {
     while (!diceStopped) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    await new Promise((resolve) => setTimeout(resolve, 700));
+    await new Promise((resolve) => setTimeout(resolve, 1400));
     const diceResults = diceMeshes
       .map((diceMesh) => findTopFace(diceMesh))
       .map(Number);
@@ -350,13 +350,13 @@ async function computerTurn() {
       }
     });
     positionKeptDice();
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 700));
     await computerTurn();
   } else {
     while (!diceStopped) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 700));
     const finalDiceResults = diceMeshes
       .map((diceMesh) => findTopFace(diceMesh))
       .map(Number);
@@ -364,7 +364,7 @@ async function computerTurn() {
     const category = selectCategory(finalDiceResults);
     const score = judge.scoreBoard(finalDiceResults)[category];
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 400));
     selectScore(category, score);
   }
 }
@@ -390,14 +390,40 @@ function selectKeptDice(diceResults, rollCount, keptDiceIndices) {
     const maxCountDice = parseInt(
       Object.keys(counts).find((key) => counts[key] === maxCount)
     );
-    diceResults.forEach((dice, index) => {
-      if (dice === maxCountDice && !keptDiceIndices.includes(index)) {
-        keptDiceIndices.push(index);
-      }
-    });
+    const categoryNames = [
+      "Aces",
+      "Deuces",
+      "Threes",
+      "Fours",
+      "Fives",
+      "Sixes",
+    ][maxCountDice - 1];
+    if (currentPlayer.scores[`${categoryNames[maxCountDice]}s`] === undefined) {
+      diceResults.forEach((dice, index) => {
+        if (dice === maxCountDice && !keptDiceIndices.includes(index)) {
+          keptDiceIndices.push(index);
+        }
+      });
+    } else {
+      const secondMaxCount = Math.max(
+        ...Object.values(counts).filter((count) => count !== maxCount)
+      );
+      const secondMaxCountDice = parseInt(
+        Object.keys(counts).find((key) => counts[key] === secondMaxCount)
+      );
+      diceResults.forEach((dice, index) => {
+        if (dice === secondMaxCountDice && !keptDiceIndices.includes(index)) {
+          keptDiceIndices.push(index);
+        }
+      });
+    }
   } else {
     const uniqueDiceValues = [...new Set(diceResults)];
-    if (uniqueDiceValues.length >= 4) {
+    if (
+      uniqueDiceValues.length >= 4 &&
+      (currentPlayer.scores["S. Straight"] === undefined ||
+        currentPlayer.scores["L. Straight"] === undefined)
+    ) {
       const sortedDiceValues = uniqueDiceValues.sort((a, b) => a - b);
       const isStraightPossible =
         sortedDiceValues[3] - sortedDiceValues[0] === 3 ||
@@ -424,22 +450,55 @@ function selectKeptDice(diceResults, rollCount, keptDiceIndices) {
       }
     }
     if (keptDiceIndices.length === 0) {
-      const categoryNames = [
-        "",
-        "Aces",
-        "Deuces",
-        "Threes",
-        "Fours",
-        "Fives",
-        "Sixes",
-      ];
-      const keptDiceValues = keptDiceIndices.map((index) => diceResults[index]);
-      const updatedAvailableCategories = Object.keys(counts)
+      if (
+        rollCount < 2 &&
+        currentPlayer.scores["Full House"] === undefined &&
+        Object.values(counts).filter((count) => count >= 2).length === 2
+      ) {
+        // Full House를 노리는 경우
+        const pairDice = Object.keys(counts)
+          .filter((dice) => counts[dice] >= 2)
+          .map(Number);
+        diceResults.forEach((dice, index) => {
+          if (pairDice.includes(dice) && !keptDiceIndices.includes(index)) {
+            keptDiceIndices.push(index);
+          }
+        });
+      } else {
+        const categoryNames = [
+          "",
+          "Aces",
+          "Deuces",
+          "Threes",
+          "Fours",
+          "Fives",
+          "Sixes",
+        ];
+        const availableCategories = Object.keys(counts)
+          .filter(
+            (dice) =>
+              currentPlayer.scores[`${categoryNames[dice]}`] === undefined
+          )
+          .map(Number);
 
+        if (availableCategories.length > 0) {
+          const maxAvailableDice = availableCategories.reduce((a, b) =>
+            counts[a] > counts[b] ? a : b
+          );
+          diceResults.forEach((dice, index) => {
+            if (dice === maxAvailableDice && !keptDiceIndices.includes(index)) {
+              keptDiceIndices.push(index);
+            }
+          });
+        }
+      }
+    } else if (keptDiceIndices.length === 1) {
+      const keptDiceValue = diceResults[keptDiceIndices[0]];
+      const updatedAvailableCategories = Object.keys(counts)
         .filter(
           (dice) =>
             currentPlayer.scores[`${categoryNames[dice]}`] === undefined &&
-            !keptDiceValues.includes(Number(dice))
+            Number(dice) !== keptDiceValue
         )
         .map(Number);
 
@@ -447,22 +506,40 @@ function selectKeptDice(diceResults, rollCount, keptDiceIndices) {
         const maxAvailableDice = updatedAvailableCategories.reduce((a, b) =>
           counts[a] > counts[b] ? a : b
         );
-        diceResults.forEach((dice, index) => {
-          if (dice === maxAvailableDice && !keptDiceIndices.includes(index)) {
-            keptDiceIndices.push(index);
-          }
-        });
-      } else {
-        const maxCountDice = parseInt(
-          Object.keys(counts).find((key) => counts[key] === maxCount)
-        );
-        diceResults.forEach((dice, index) => {
-          if (dice === maxCountDice && !keptDiceIndices.includes(index)) {
-            keptDiceIndices.push(index);
-          }
-        });
+        const maxAvailableDiceCategory = categoryNames[maxAvailableDice];
+
+        if (
+          counts[maxAvailableDice] >= 2 &&
+          currentPlayer.scores[maxAvailableDiceCategory] === undefined
+        ) {
+          // 가장 많이 나온 주사위 값이 2개 이상이고, 해당 카테고리가 비어있는 경우
+          keptDiceIndices = diceResults.reduce((indices, dice, index) => {
+            if (dice === maxAvailableDice) {
+              indices.push(index);
+            }
+            return indices;
+          }, []);
+        } else {
+          // 다른 카테고리의 주사위를 선택하는 경우
+          diceResults.forEach((dice, index) => {
+            if (dice === maxAvailableDice && !keptDiceIndices.includes(index)) {
+              keptDiceIndices.push(index);
+            }
+          });
+        }
       }
     }
+    // else {
+    //   const maxCountDice = parseInt(
+    //     Object.keys(counts).find((key) => counts[key] === maxCount)
+    //   );
+    //   diceResults.forEach((dice, index) => {
+    //     if (dice === maxCountDice && !keptDiceIndices.includes(index)) {
+    //       keptDiceIndices.push(index);
+    //     }
+    //   });
+
+    // }
   }
 
   return keptDiceIndices;
@@ -568,9 +645,29 @@ function selectCategory(diceResults) {
     return "Choice";
   }
 
+  if (currentPlayer.scores["Deuces"] === undefined) {
+    return "Deuces";
+  }
+
+  if (currentPlayer.scores["Threes"] === undefined) {
+    return "Threes";
+  }
+
+  if (currentPlayer.scores["Fours"] === undefined) {
+    return "Fours";
+  }
+
   // 할거 없으면 야추 떼기
   if (currentPlayer.scores["Yacht"] === undefined) {
     return "Yacht";
+  }
+
+  if (currentPlayer.scores["Fives"] === undefined) {
+    return "Fives";
+  }
+
+  if (currentPlayer.scores["Sixes"] === undefined) {
+    return "Sixes";
   }
 
   // 빈 카테고리에 점수 기록

@@ -427,7 +427,10 @@ function selectKeptDice(diceResults, rollCount, keptDiceIndices) {
       const sortedDiceValues = uniqueDiceValues.sort((a, b) => a - b);
       const isStraightPossible =
         sortedDiceValues[3] - sortedDiceValues[0] === 3 ||
-        (sortedDiceValues.includes(2) &&
+        (sortedDiceValues[sortedDiceValues.length - 1] -
+          sortedDiceValues[sortedDiceValues.length - 4] ===
+          3 &&
+          sortedDiceValues.includes(2) &&
           sortedDiceValues.includes(3) &&
           sortedDiceValues.includes(4) &&
           sortedDiceValues.includes(5));
@@ -645,6 +648,31 @@ function selectCategory(diceResults) {
     return "Choice";
   }
 
+  // 4 of a Kind 확인
+  if (currentPlayer.scores["4 of a Kind"] === undefined) {
+    return "4 of a Kind";
+  }
+
+  // Large Straight 확인
+  if (currentPlayer.scores["L. Straight"] === undefined) {
+    return "L. Straight";
+  }
+
+  // Full House 확인
+  if (currentPlayer.scores["Full House"] === undefined) {
+    return "Full House";
+  }
+
+  // Small Straight 확인
+  if (currentPlayer.scores["S. Straight"] === undefined) {
+    return "S. Straight";
+  }
+
+  // 할거 없으면 야추 떼기
+  if (currentPlayer.scores["Yacht"] === undefined) {
+    return "Yacht";
+  }
+
   if (currentPlayer.scores["Deuces"] === undefined) {
     return "Deuces";
   }
@@ -655,11 +683,6 @@ function selectCategory(diceResults) {
 
   if (currentPlayer.scores["Fours"] === undefined) {
     return "Fours";
-  }
-
-  // 할거 없으면 야추 떼기
-  if (currentPlayer.scores["Yacht"] === undefined) {
-    return "Yacht";
   }
 
   if (currentPlayer.scores["Fives"] === undefined) {
