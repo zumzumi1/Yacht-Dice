@@ -319,482 +319,113 @@ function startGameWithComputer() {
 async function computerTurn() {
   isComputerTurn = true;
   rollDiceButton.disabled = true;
+
+  let keptDiceIndices = []; // 누적된 keptDiceIndices 배열 선언
+
   if (rollCount < 3 && keptDice.length < 5) {
-    await new Promise((resolve) => setTimeout(resolve, 700)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 700));
     resetAndRollDice();
     rollDiceButton.disabled = true;
-    await new Promise((resolve) => setTimeout(resolve, 700)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 700));
     resetAndRollDice();
     rollDiceButton.disabled = true;
     while (!diceStopped) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    await new Promise((resolve) => setTimeout(resolve, 700)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 700));
     const diceResults = diceMeshes
       .map((diceMesh) => findTopFace(diceMesh))
       .map(Number);
 
-    // 주사위 결과를 분석하여 킵할 주사위 선택
-    const keptDiceIndices = selectKeptDice(diceResults, rollCount);
-    keptDiceIndices.forEach((index) => {
+    // 이전에 선택된 keptDiceIndices를 전달하여 누적된 결과 사용
+    const selectedDiceIndices = selectKeptDice(
+      diceResults,
+      rollCount,
+      keptDiceIndices
+    );
+    keptDiceIndices = [...keptDiceIndices, ...selectedDiceIndices]; // 선택된 주사위 인덱스 누적
+    selectedDiceIndices.forEach((index) => {
       if (!keptDice.includes(index)) {
         keptDice.push(index);
       }
     });
     positionKeptDice();
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1초 지연
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     await computerTurn();
   } else {
     while (!diceStopped) {
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 0.5초 지연
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     const finalDiceResults = diceMeshes
       .map((diceMesh) => findTopFace(diceMesh))
       .map(Number);
 
-    // 최종 주사위 결과를 분석하여 점수 선택
     const category = selectCategory(finalDiceResults);
     const score = judge.scoreBoard(finalDiceResults)[category];
 
-    // console.log(category, score);
-    await new Promise((resolve) => setTimeout(resolve, 500)); // 1.5초 지연
+    await new Promise((resolve) => setTimeout(resolve, 500));
     selectScore(category, score);
   }
 }
 
-function selectKeptDice(diceResults, rollCount) {
-  const keptDiceIndices = [];
-  const scores = judge.scoreBoard(diceResults);
+function selectKeptDice(diceResults, rollCount, keptDiceIndices) {
+  const counts = {};
+  diceResults.forEach((dice) => {
+    counts[dice] = (counts[dice] || 0) + 1;
+  });
 
-  // 기존에 킵한 주사위가 있는 경우, 해당 주사위는 계속 킵하도록 설정
-  for (let i = 0; i < diceResults.length; i++) {
-    if (keptDice.includes(i)) {
-      keptDiceIndices.push(i);
-    }
-  }
-  // 첫 번째 굴림에서는 높은 숫자의 주사위를 킵
-  if (rollCount === 1) {
-    if (
-      0
-      // currentPlayer.scores["Aces"] !== undefined &&
-      // currentPlayer.scores["Choice"] !== undefined
-    ) {
-      const counts = {};
-      for (let i = 0; i < diceResults.length; i++) {
-        counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
+  const maxCount = Math.max(...Object.values(counts));
+
+  if (maxCount >= 4) {
+    const maxCountDice = parseInt(
+      Object.keys(counts).find((key) => counts[key] === maxCount)
+    );
+    diceResults.forEach((dice, index) => {
+      if (dice === maxCountDice && !keptDiceIndices.includes(index)) {
+        keptDiceIndices.push(index);
       }
-
-      const upperSectionNumbers = [
-        "Aces",
-        "Deuces",
-        "Threes",
-        "Fours",
-        "Fives",
-        "Sixes",
-      ];
-      const availableNumbers = upperSectionNumbers.filter(
-        (number) => currentPlayer.scores[number] === undefined
-      );
-
-      const availableCounts = {};
-      for (const number of availableNumbers) {
-        const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
-        availableCounts[number] = count;
+    });
+  } else if (maxCount === 3) {
+    const maxCountDice = parseInt(
+      Object.keys(counts).find((key) => counts[key] === maxCount)
+    );
+    diceResults.forEach((dice, index) => {
+      if (dice === maxCountDice && !keptDiceIndices.includes(index)) {
+        keptDiceIndices.push(index);
       }
+    });
+  } else {
+    const uniqueDiceValues = [...new Set(diceResults)];
+    if (uniqueDiceValues.length >= 4) {
+      const sortedDiceValues = uniqueDiceValues.sort((a, b) => a - b);
+      const isStraightPossible =
+        sortedDiceValues[3] - sortedDiceValues[0] === 3 ||
+        (sortedDiceValues.includes(2) &&
+          sortedDiceValues.includes(3) &&
+          sortedDiceValues.includes(4) &&
+          sortedDiceValues.includes(5));
 
-      const maxCount = Math.max(...Object.values(availableCounts));
-      const maxCountNumber = Object.keys(availableCounts).find(
-        (key) => availableCounts[key] === maxCount
-      );
-
-      for (let i = 0; i < diceResults.length; i++) {
-        if (
-          upperSectionNumbers[diceResults[i] - 1] === maxCountNumber &&
-          !keptDiceIndices.includes(i)
-        ) {
-          keptDiceIndices.push(i);
-        }
-      }
-    } else {
-      const upperSectionNumbers = [
-        "Aces",
-        "Deuces",
-        "Threes",
-        "Fours",
-        "Fives",
-        "Sixes",
-      ];
-      const availableUpperSectionNumbers = upperSectionNumbers.filter(
-        (number) => currentPlayer.scores[number] === undefined
-      );
-
-      const counts = {};
-      for (let i = 0; i < diceResults.length; i++) {
-        counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
-      }
-
-      const triples = Object.entries(counts)
-        .filter(([key, value]) => value >= 3)
-        .sort((a, b) => b[0] - a[0]);
-
-      if (triples.length > 0) {
-        for (const [number, count] of triples) {
-          const upperSectionNumber = upperSectionNumbers[number - 1];
-
-          if (availableUpperSectionNumbers.includes(upperSectionNumber)) {
-            for (let i = 0; i < diceResults.length; i++) {
-              if (
-                diceResults[i] === Number(number) &&
-                !keptDiceIndices.includes(i)
-              ) {
-                keptDiceIndices.push(i);
-              }
-            }
-            break;
+      if (isStraightPossible) {
+        const straightDice = [];
+        for (let i = 0; i < sortedDiceValues.length - 1; i++) {
+          if (sortedDiceValues[i + 1] - sortedDiceValues[i] === 1) {
+            straightDice.push(sortedDiceValues[i]);
+            straightDice.push(sortedDiceValues[i + 1]);
           }
         }
-
-        if (keptDiceIndices.length === 3) {
-          const remainingDice = diceResults.filter(
-            (_, index) => !keptDiceIndices.includes(index)
-          );
-          const remainingNumber = remainingDice[0];
-          const remainingUpperSectionNumber =
-            upperSectionNumbers[remainingNumber - 1];
-
-          if (
-            availableUpperSectionNumbers.includes(remainingUpperSectionNumber)
-          ) {
-            for (let i = 0; i < diceResults.length; i++) {
-              if (
-                diceResults[i] === remainingNumber &&
-                !keptDiceIndices.includes(i)
-              ) {
-                keptDiceIndices.push(i);
-              }
-            }
+        const uniqueStraightDice = [...new Set(straightDice)];
+        uniqueStraightDice.forEach((diceValue) => {
+          const index = diceResults.findIndex((dice) => dice === diceValue);
+          if (index !== -1 && !keptDiceIndices.includes(index)) {
+            keptDiceIndices.push(index);
           }
-        }
-      }
-
-      const pairs = Object.entries(counts)
-        .filter(([key, value]) => value >= 2)
-        .sort((a, b) => b[0] - a[0]);
-
-      if (pairs.length > 0) {
-        for (const [number, count] of pairs) {
-          const upperSectionNumber = upperSectionNumbers[number - 1];
-
-          if (availableUpperSectionNumbers.includes(upperSectionNumber)) {
-            for (let i = 0; i < diceResults.length; i++) {
-              if (
-                diceResults[i] === Number(number) &&
-                !keptDiceIndices.includes(i)
-              ) {
-                keptDiceIndices.push(i);
-              }
-            }
-            break;
-          } else if (
-            currentPlayer.scores["Full House"] === undefined &&
-            pairs.length > 1
-          ) {
-            const pairNumbers = pairs.map(([number]) => Number(number));
-            for (let i = 0; i < diceResults.length; i++) {
-              if (
-                pairNumbers.includes(diceResults[i]) &&
-                !keptDiceIndices.includes(i)
-              ) {
-                keptDiceIndices.push(i);
-              }
-            }
-            break;
-          } else if (
-            (currentPlayer.scores["Yacht"] === undefined ||
-              currentPlayer.scores["4 of a Kind"] === undefined) &&
-            count >= 4
-          ) {
-            for (let i = 0; i < diceResults.length; i++) {
-              if (
-                diceResults[i] === Number(number) &&
-                !keptDiceIndices.includes(i)
-              ) {
-                keptDiceIndices.push(i);
-              }
-            }
-            break;
-          }
-        }
-      } else {
-        const allDifferent = Object.values(counts).every(
-          (count) => count === 1
-        );
-
-        if (allDifferent) {
-          const availableCounts = {};
-          for (const number of availableUpperSectionNumbers) {
-            const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
-            availableCounts[number] = count;
-          }
-
-          const maxNumber = Math.max(...Object.keys(availableCounts));
-          const maxNumberIndex = diceResults.indexOf(maxNumber);
-
-          if (
-            maxNumberIndex !== -1 &&
-            !keptDiceIndices.includes(maxNumberIndex)
-          ) {
-            keptDiceIndices.push(maxNumberIndex);
-          }
-        } else {
-          const availableCounts = {};
-          for (const number of availableUpperSectionNumbers) {
-            const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
-            availableCounts[number] = count;
-          }
-
-          const maxCount = Math.max(...Object.values(availableCounts));
-          const maxCountNumbers = Object.keys(availableCounts)
-            .filter((key) => availableCounts[key] === maxCount)
-            .sort(
-              (a, b) =>
-                upperSectionNumbers.indexOf(b) - upperSectionNumbers.indexOf(a)
-            );
-
-          for (let i = 0; i < diceResults.length; i++) {
-            if (
-              maxCountNumbers.includes(
-                upperSectionNumbers[diceResults[i] - 1]
-              ) &&
-              !keptDiceIndices.includes(i)
-            ) {
-              keptDiceIndices.push(i);
-            }
-          }
-        }
-      }
-
-      if (keptDiceIndices.length === 0) {
-        const availableCounts = {};
-        for (const number of availableUpperSectionNumbers) {
-          const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
-          availableCounts[number] = count;
-        }
-
-        const maxNumber = Math.max(...Object.keys(availableCounts));
-        const maxNumberIndex = diceResults.indexOf(
-          upperSectionNumbers.indexOf(maxNumber) + 1
-        );
-
-        if (
-          maxNumberIndex !== -1 &&
-          !keptDiceIndices.includes(maxNumberIndex)
-        ) {
-          keptDiceIndices.push(maxNumberIndex);
-        }
-      }
-
-      // Small Straight 확인
-      if (currentPlayer.scores["S. Straight"] === undefined) {
-        const uniqueDices = [...new Set(diceResults)];
-        const missingDice = [1, 2, 3, 4, 5, 6].filter(
-          (num) => !uniqueDices.includes(num)
-        );
-
-        if (missingDice.length <= 2 && uniqueDices.length >= 3) {
-          const sortedDice = uniqueDices.sort((a, b) => a - b);
-          const consecutiveDice = [];
-          let currentStreak = [sortedDice[0]];
-
-          for (let i = 1; i < sortedDice.length; i++) {
-            if (sortedDice[i] - sortedDice[i - 1] === 1) {
-              currentStreak.push(sortedDice[i]);
-            } else {
-              if (currentStreak.length >= 3) {
-                consecutiveDice.push(...currentStreak);
-              }
-              currentStreak = [sortedDice[i]];
-            }
-          }
-
-          if (currentStreak.length >= 3) {
-            consecutiveDice.push(...currentStreak);
-          }
-
-          if (consecutiveDice.length >= 3) {
-            if (rollCount === 1) {
-              const counts = {};
-              for (let i = 0; i < diceResults.length; i++) {
-                counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
-              }
-
-              const pairs = Object.entries(counts).filter(
-                ([key, value]) => value >= 2
-              );
-              if (pairs.length > 0) {
-                const pairNumber = Number(pairs[0][0]);
-                for (let i = 0; i < diceResults.length; i++) {
-                  if (
-                    diceResults[i] === pairNumber &&
-                    !keptDiceIndices.includes(i)
-                  ) {
-                    keptDiceIndices.push(i);
-                  }
-                }
-              } else {
-                for (let i = 0; i < diceResults.length; i++) {
-                  if (
-                    consecutiveDice.includes(diceResults[i]) &&
-                    !keptDiceIndices.includes(i)
-                  ) {
-                    keptDiceIndices.push(i);
-                  }
-                }
-              }
-            } else {
-              for (let i = 0; i < diceResults.length; i++) {
-                if (
-                  consecutiveDice.includes(diceResults[i]) &&
-                  !keptDiceIndices.includes(i)
-                ) {
-                  keptDiceIndices.push(i);
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Large Straight 확인
-      else if (currentPlayer.scores["L. Straight"] === undefined) {
-        const uniqueDices = [...new Set(diceResults)];
-        const missingDice = [1, 2, 3, 4, 5, 6].filter(
-          (num) => !uniqueDices.includes(num)
-        );
-
-        if (missingDice.length <= 1 && uniqueDices.length >= 4) {
-          const sortedDice = uniqueDices.sort((a, b) => a - b);
-          const consecutiveDice = [];
-          let currentStreak = [sortedDice[0]];
-
-          for (let i = 1; i < sortedDice.length; i++) {
-            if (sortedDice[i] - sortedDice[i - 1] === 1) {
-              currentStreak.push(sortedDice[i]);
-            } else {
-              if (currentStreak.length >= 4) {
-                consecutiveDice.push(...currentStreak);
-              }
-              currentStreak = [sortedDice[i]];
-            }
-          }
-
-          if (currentStreak.length >= 4) {
-            consecutiveDice.push(...currentStreak);
-          }
-
-          if (consecutiveDice.length >= 4) {
-            for (let i = 0; i < diceResults.length; i++) {
-              if (
-                consecutiveDice.includes(diceResults[i]) &&
-                !keptDiceIndices.includes(i)
-              ) {
-                keptDiceIndices.push(i);
-              }
-            }
-          }
-        }
+        });
       }
     }
-  }
-
-  // 두 번째 굴림에서는 조합을 고려하여 주사위를 킵
-  else if (rollCount === 2) {
-    const counts = {};
-    for (let i = 0; i < diceResults.length; i++) {
-      counts[diceResults[i]] = (counts[diceResults[i]] || 0) + 1;
-    }
-
-    // 첫 번째 굴림에서 킵한 주사위와 같은 숫자의 주사위를 추가로 킵
-    const keptDiceValues = keptDice.map((index) => diceResults[index]);
-    const keptDiceCounts = {};
-    for (let i = 0; i < keptDiceValues.length; i++) {
-      keptDiceCounts[keptDiceValues[i]] =
-        (keptDiceCounts[keptDiceValues[i]] || 0) + 1;
-    }
-
-    for (const [number, count] of Object.entries(counts)) {
-      if (keptDiceCounts[number]) {
-        for (let i = 0; i < diceResults.length; i++) {
-          if (
-            diceResults[i] === Number(number) &&
-            !keptDiceIndices.includes(i)
-          ) {
-            keptDiceIndices.push(i);
-          }
-        }
-      }
-    }
-
-    // Yacht 확인
-    if (
-      Object.values(counts).includes(5) &&
-      currentPlayer.scores["Yacht"] === undefined
-    ) {
-      const yahtzeeValue = Object.keys(counts).find((key) => counts[key] === 5);
-      for (let i = 0; i < diceResults.length; i++) {
-        if (diceResults[i] == yahtzeeValue && !keptDiceIndices.includes(i)) {
-          keptDiceIndices.push(i);
-        }
-      }
-    }
-    // 4 of a Kind 확인
-    else if (
-      Object.values(counts).includes(4) &&
-      currentPlayer.scores["4 of a Kind"] === undefined
-    ) {
-      const fourOfAKindValue = Object.keys(counts).find(
-        (key) => counts[key] === 4
-      );
-      for (let i = 0; i < diceResults.length; i++) {
-        if (
-          diceResults[i] == fourOfAKindValue &&
-          !keptDiceIndices.includes(i)
-        ) {
-          keptDiceIndices.push(i);
-        }
-      }
-    }
-
-    // Full House 확인
-    else if (
-      Object.values(counts).includes(3) &&
-      Object.values(counts).includes(2) &&
-      currentPlayer.scores["Full House"] === undefined
-    ) {
-      const fullHouseValues = Object.keys(counts).filter(
-        (key) => counts[key] >= 2
-      );
-      const fullHouseSum = fullHouseValues.reduce(
-        (sum, value) => sum + Number(value) * counts[value],
-        0
-      );
-
-      if (fullHouseSum > 12) {
-        for (let i = 0; i < diceResults.length; i++) {
-          if (
-            fullHouseValues.includes(String(diceResults[i])) &&
-            !keptDiceIndices.includes(i)
-          ) {
-            keptDiceIndices.push(i);
-          }
-        }
-      }
-    }
-
-    // 숫자 주사위 확인
     if (keptDiceIndices.length === 0) {
-      const upperSectionNumbers = [
+      const categoryNames = [
+        "",
         "Aces",
         "Deuces",
         "Threes",
@@ -802,178 +433,34 @@ function selectKeptDice(diceResults, rollCount) {
         "Fives",
         "Sixes",
       ];
-      const availableUpperSectionNumbers = upperSectionNumbers.filter(
-        (number) => currentPlayer.scores[number] === undefined
-      );
+      const keptDiceValues = keptDiceIndices.map((index) => diceResults[index]);
+      const updatedAvailableCategories = Object.keys(counts)
 
-      const keptDiceValues = keptDice.map((index) => diceResults[index]);
-      const keptDiceCounts = {};
-      for (let i = 0; i < keptDiceValues.length; i++) {
-        keptDiceCounts[keptDiceValues[i]] =
-          (keptDiceCounts[keptDiceValues[i]] || 0) + 1;
-      }
+        .filter(
+          (dice) =>
+            currentPlayer.scores[`${categoryNames[dice]}`] === undefined &&
+            !keptDiceValues.includes(Number(dice))
+        )
+        .map(Number);
 
-      const pairs = Object.entries(counts)
-        .filter(([key, value]) => value + (keptDiceCounts[key] || 0) >= 2)
-        .sort((a, b) => b[0] - a[0]);
-
-      if (pairs.length > 0) {
-        for (const [number, count] of pairs) {
-          const upperSectionNumber = upperSectionNumbers[number - 1];
-
-          if (availableUpperSectionNumbers.includes(upperSectionNumber)) {
-            for (let i = 0; i < diceResults.length; i++) {
-              if (
-                diceResults[i] === Number(number) &&
-                !keptDiceIndices.includes(i)
-              ) {
-                keptDiceIndices.push(i);
-              }
-            }
-            break;
+      if (updatedAvailableCategories.length > 0) {
+        const maxAvailableDice = updatedAvailableCategories.reduce((a, b) =>
+          counts[a] > counts[b] ? a : b
+        );
+        diceResults.forEach((dice, index) => {
+          if (dice === maxAvailableDice && !keptDiceIndices.includes(index)) {
+            keptDiceIndices.push(index);
           }
-        }
-      }
-
-      if (keptDiceIndices.length === 0) {
-        const availableCounts = {};
-        for (const number of availableUpperSectionNumbers) {
-          const count = counts[upperSectionNumbers.indexOf(number) + 1] || 0;
-          availableCounts[number] = count;
-        }
-
-        const maxCount = Math.max(...Object.values(availableCounts));
-        const maxCountNumbers = Object.keys(availableCounts)
-          .filter((key) => availableCounts[key] === maxCount)
-          .sort(
-            (a, b) =>
-              upperSectionNumbers.indexOf(b) - upperSectionNumbers.indexOf(a)
-          );
-
-        for (let i = 0; i < diceResults.length; i++) {
-          if (
-            maxCountNumbers.includes(upperSectionNumbers[diceResults[i] - 1]) &&
-            !keptDiceIndices.includes(i)
-          ) {
-            keptDiceIndices.push(i);
-          }
-        }
-      }
-    }
-  }
-
-  // Small Straight 확인
-  if (currentPlayer.scores["S. Straight"] === undefined) {
-    const uniqueDices = [...new Set(diceResults)];
-    const missingDice = [1, 2, 3, 4, 5, 6].filter(
-      (num) => !uniqueDices.includes(num)
-    );
-
-    if (missingDice.length <= 2 && uniqueDices.length >= 3) {
-      const sortedDice = uniqueDices.sort((a, b) => a - b);
-      const consecutiveDice = [];
-      let currentStreak = [sortedDice[0]];
-
-      for (let i = 1; i < sortedDice.length; i++) {
-        if (sortedDice[i] - sortedDice[i - 1] === 1) {
-          currentStreak.push(sortedDice[i]);
-        } else {
-          if (currentStreak.length >= 3) {
-            consecutiveDice.push(...currentStreak);
-          }
-          currentStreak = [sortedDice[i]];
-        }
-      }
-
-      if (currentStreak.length >= 3) {
-        consecutiveDice.push(...currentStreak);
-      }
-
-      if (consecutiveDice.length === 4) {
-        if (rollCount === 1) {
-          for (let i = 0; i < diceResults.length; i++) {
-            if (
-              consecutiveDice.includes(diceResults[i]) &&
-              !keptDiceIndices.includes(i)
-            ) {
-              keptDiceIndices.push(i);
-            }
-          }
-        } else {
-          const missingNumber = [1, 2, 3, 4, 5, 6].find(
-            (num) => !consecutiveDice.includes(num) && missingDice.includes(num)
-          );
-          for (let i = 0; i < diceResults.length; i++) {
-            if (
-              consecutiveDice.includes(diceResults[i]) &&
-              !keptDiceIndices.includes(i) &&
-              diceResults[i] !== missingNumber
-            ) {
-              keptDiceIndices.push(i);
-            }
-          }
-        }
+        });
       } else {
-        for (let i = 0; i < diceResults.length; i++) {
-          if (
-            consecutiveDice.includes(diceResults[i]) &&
-            !keptDiceIndices.includes(i)
-          ) {
-            keptDiceIndices.push(i);
+        const maxCountDice = parseInt(
+          Object.keys(counts).find((key) => counts[key] === maxCount)
+        );
+        diceResults.forEach((dice, index) => {
+          if (dice === maxCountDice && !keptDiceIndices.includes(index)) {
+            keptDiceIndices.push(index);
           }
-        }
-      }
-    }
-  }
-
-  // Large Straight 확인
-  if (currentPlayer.scores["L. Straight"] === undefined) {
-    const uniqueDices = [...new Set(diceResults)];
-    const missingDice = [1, 2, 3, 4, 5, 6].filter(
-      (num) => !uniqueDices.includes(num)
-    );
-
-    if (missingDice.length <= 1 && uniqueDices.length >= 4) {
-      const sortedDice = uniqueDices.sort((a, b) => a - b);
-      const consecutiveDice = [];
-      let currentStreak = [sortedDice[0]];
-
-      for (let i = 1; i < sortedDice.length; i++) {
-        if (sortedDice[i] - sortedDice[i - 1] === 1) {
-          currentStreak.push(sortedDice[i]);
-        } else {
-          if (currentStreak.length >= 4) {
-            consecutiveDice.push(...currentStreak);
-          }
-          currentStreak = [sortedDice[i]];
-        }
-      }
-
-      if (currentStreak.length >= 4) {
-        consecutiveDice.push(...currentStreak);
-      }
-
-      if (consecutiveDice.length === 5) {
-        for (let i = 0; i < diceResults.length; i++) {
-          if (
-            consecutiveDice.includes(diceResults[i]) &&
-            !keptDiceIndices.includes(i)
-          ) {
-            keptDiceIndices.push(i);
-          }
-        }
-      } else if (consecutiveDice.length === 4 && missingDice.length === 1) {
-        // L. Straight가 완성되지 않았고, 남은 주사위가 1개인 경우
-        // 남은 주사위 하나만 킵하고, 나머지는 굴리기
-        for (let i = 0; i < diceResults.length; i++) {
-          if (
-            consecutiveDice.includes(diceResults[i]) &&
-            !keptDiceIndices.includes(i)
-          ) {
-            keptDiceIndices.push(i);
-            break;
-          }
-        }
+        });
       }
     }
   }
@@ -1064,6 +551,11 @@ function selectCategory(diceResults) {
 
   if (scores["Sixes"] > 12 && currentPlayer.scores["Sixes"] === undefined) {
     return "Sixes";
+  }
+
+  // Choice 확인
+  if (currentPlayer.scores["Choice"] === undefined && scores["Choice"] >= 20) {
+    return "Choice";
   }
 
   // Aces 확인
