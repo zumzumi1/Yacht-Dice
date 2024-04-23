@@ -153,6 +153,15 @@
       font-size: 4rem;
       margin-bottom: 2rem;
     }
+    
+    @keyframes mainh1 {
+      0%{
+        transform: scale(1);
+      }
+      100%{
+        transform: scale(1.1);
+      }
+    }
 
     #mainScreen button {
       font-size: 2rem;
@@ -163,6 +172,12 @@
       background-color: #007bff;
       color: white;
       cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #mainScreen button:hover {
+      background-color: #006fe5;
+      transform: scale(1.05);
     }
 
     #playerNameForm {
