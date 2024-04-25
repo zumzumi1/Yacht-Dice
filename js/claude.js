@@ -791,6 +791,26 @@ function selectCategory(diceResults) {
     return "Aces";
   }
 
+  if (scores["Deuces"] > 0 && currentPlayer.scores["Deuces"] === undefined) {
+    return "Deuces";
+  }
+
+  if (scores["Threes"] > 0 && currentPlayer.scores["Threes"] === undefined) {
+    return "Threes";
+  }
+
+  if (scores["Fours"] > 0 && currentPlayer.scores["Fours"] === undefined) {
+    return "Fours";
+  }
+
+  if (scores["Fives"] > 0 && currentPlayer.scores["Fives"] === undefined) {
+    return "Fives";
+  }
+
+  if (scores["Sixes"] > 0 && currentPlayer.scores["Sixes"] === undefined) {
+    return "Sixes";
+  }
+
   // Choice 확인
   if (currentPlayer.scores["Choice"] === undefined) {
     return "Choice";
